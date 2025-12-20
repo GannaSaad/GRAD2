@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "40233588836",
+    "project_id": "dentex-clean",
+    "storage_bucket": "dentex-clean.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:40233588836:android:7bab36c289361deeac6771",
+        "android_client_info": {
+          "package_name": "com.example.dentex_clean"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASx7Siu9CBckt0cTvqEFRGK4oThu8mQjc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

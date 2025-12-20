@@ -2,7 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 
 class ThemeCubit extends Cubit<ThemeMode> {
-  static ThemeMode _currentMode = ThemeMode.dark;
+  static ThemeMode _currentMode = ThemeMode.light;
 
   ThemeCubit() : super(_currentMode);
 
