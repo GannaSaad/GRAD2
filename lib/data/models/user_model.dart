@@ -7,6 +7,12 @@ class UserModel {
   final String? fullName;
   final String? age;
   final String? role;
+  final String? phoneNumber;
+  final String? gender;
+  final String? speciality;
+  final String? certificates;
+  final String? allergies;
+  final String? medicalInsurance;
 
   UserModel({
     required this.id,
@@ -14,6 +20,12 @@ class UserModel {
     this.fullName,
     this.age,
     this.role,
+    this.phoneNumber,
+    this.gender,
+    this.speciality,
+    this.certificates,
+    this.allergies,
+    this.medicalInsurance,
   });
 
   factory UserModel.fromFirebaseUser(
@@ -21,6 +33,12 @@ class UserModel {
         String? fullName,
         String? age,
         String? role,
+        String? phoneNumber,
+        String? gender,
+        String? speciality,
+        String? certificates,
+        String? allergies,
+        String? medicalInsurance,
       }) {
     return UserModel(
       id: user.uid,
@@ -28,6 +46,12 @@ class UserModel {
       fullName: fullName ?? user.displayName,
       age: age,
       role: role,
+      phoneNumber: phoneNumber,
+      gender: gender,
+      speciality: speciality,
+      certificates: certificates,
+      allergies: allergies,
+      medicalInsurance: medicalInsurance,
     );
   }
 
@@ -38,6 +62,12 @@ class UserModel {
       fullName: fullName ?? '',
       age: age,
       role: role,
+      phoneNumber: phoneNumber,
+      gender: gender,
+      speciality: speciality,
+      certificates: certificates,
+      allergies: allergies,
+      medicalInsurance: medicalInsurance,
     );
   }
 }

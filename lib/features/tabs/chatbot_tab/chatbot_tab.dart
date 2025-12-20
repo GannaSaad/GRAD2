@@ -10,7 +10,7 @@ class ChatBotTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Dentix AI Assistant", style: AppTextStyles.medium18White.copyWith(color: AppColors.primaryColor)),
+        title: Text("Dentix Shagy", style: AppTextStyles.medium18White.copyWith(color: AppColors.primaryColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),

@@ -16,6 +16,12 @@ class AuthRepositoryImpl implements AuthRepo {
     required String name,
     required String age,
     required String role,
+    required String phoneNumber,
+    required String gender,
+    String? speciality,
+    String? certificates,
+    String? allergies,
+    String? medicalInsurance,
   }) async {
     final userModel = await _remoteDataSource.register(
       email: email,
@@ -23,6 +29,12 @@ class AuthRepositoryImpl implements AuthRepo {
       fullName: name,
       age: age,
       role: role,
+      phoneNumber: phoneNumber,
+      gender: gender,
+      speciality: speciality,
+      certificates: certificates,
+      allergies: allergies,
+      medicalInsurance: medicalInsurance,
     );
 
     return userModel.toEntity();
@@ -31,7 +43,6 @@ class AuthRepositoryImpl implements AuthRepo {
   @override
   Future<UserEntity> login({required String email, required String password}) async {
     final userModel = await _remoteDataSource.login(email: email, password: password);
-
     return userModel.toEntity();
   }
 }

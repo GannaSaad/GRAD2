@@ -11,12 +11,24 @@ class RegisterViewModel extends Cubit<AuthState> {
   RegisterViewModel(this._registerUseCase) : super(AuthInitial());
 
   final formKey = GlobalKey<FormState>();
+  
+  // Common fields
   final nameController = TextEditingController();
   final ageController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+  final phoneController = TextEditingController();
   String selectedRole = 'patient';
+  String selectedGender = 'male';
+
+  // Doctor specific
+  final specialityController = TextEditingController();
+  final certificatesController = TextEditingController();
+
+  // Patient specific
+  final allergiesController = TextEditingController();
+  final medicalInsuranceController = TextEditingController();
 
   Future<void> register() async {
     if (formKey.currentState!.validate()) {
@@ -28,6 +40,12 @@ class RegisterViewModel extends Cubit<AuthState> {
           name: nameController.text,
           age: ageController.text,
           role: selectedRole,
+          phoneNumber: phoneController.text,
+          gender: selectedGender,
+          speciality: selectedRole == 'doctor' ? specialityController.text : null,
+          certificates: selectedRole == 'doctor' ? certificatesController.text : null,
+          allergies: selectedRole == 'patient' ? allergiesController.text : null,
+          medicalInsurance: selectedRole == 'patient' ? medicalInsuranceController.text : null,
         );
         emit(AuthSuccess(user));
       } catch (e) {
@@ -43,6 +61,11 @@ class RegisterViewModel extends Cubit<AuthState> {
     emailController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
+    phoneController.dispose();
+    specialityController.dispose();
+    certificatesController.dispose();
+    allergiesController.dispose();
+    medicalInsuranceController.dispose();
     return super.close();
   }
 }

@@ -7,6 +7,12 @@ abstract class AuthRepo {
     required String name,
     required String age,
     required String role,
+    required String phoneNumber,
+    required String gender,
+    String? speciality,
+    String? certificates,
+    String? allergies,
+    String? medicalInsurance,
   });
 
   Future<UserEntity> login({

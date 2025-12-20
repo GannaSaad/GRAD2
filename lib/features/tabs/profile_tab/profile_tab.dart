@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -6,7 +5,6 @@ import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../core/core/utils/cubit/theme_cubit.dart';
-import '../../../widgets/widgets/custom_elevated_button.dart';
 import '../../auth/auth_cubit/auth_states.dart';
 import '../../auth/login/cubit/login_view_model.dart';
 import '../../auth/register/cubit/register_view_model.dart';
@@ -17,8 +15,6 @@ class ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We can try to get the user from either LoginViewModel or RegisterViewModel success state
-    // In a real app, you'd likely have a global AuthCubit
     final loginViewModel = getIt<LoginViewModel>();
     final registerViewModel = getIt<RegisterViewModel>();
     
@@ -30,8 +26,16 @@ class ProfileTab extends StatelessWidget {
     }
 
     return Scaffold(
+      backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
+          onPressed: () {
+            // Switch back to home tab or handle back
+          },
+        ),
         title: Text("My Profile", style: AppTextStyles.bold18White.copyWith(color: AppColors.primaryColor)),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -49,57 +53,48 @@ class ProfileTab extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
         child: Column(
           children: [
-            _buildProfileHeader(currentUser),
+            SizedBox(height: 20.h),
+            _buildProfileAvatar(currentUser),
+            SizedBox(height: 16.h),
+            Text(
+              currentUser?.fullName ?? "User Name",
+              style: AppTextStyles.headlineSmall.copyWith(fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 30.h),
-            _buildInfoSection(currentUser),
-            SizedBox(height: 30.h),
-            _buildLogoutButton(context),
+            _buildMenuSection(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader(dynamic user) {
-    return Column(
+  Widget _buildProfileAvatar(dynamic user) {
+    return Stack(
+      alignment: Alignment.bottomRight,
       children: [
-        Stack(
-          alignment: Alignment.bottomRight,
-          children: [
-            CircleAvatar(
-              radius: 60.r,
-              backgroundColor: AppColors.primaryBlueSoft,
-              child: Icon(Icons.person, size: 60.r, color: AppColors.primaryColor),
-            ),
-            CircleAvatar(
-              radius: 18.r,
-              backgroundColor: AppColors.primaryColor,
-              child: Icon(Icons.camera_alt, size: 18.r, color: Colors.white),
-            ),
-          ],
+        CircleAvatar(
+          radius: 60.r,
+          backgroundColor: AppColors.primaryBlueSoft,
+          child: Icon(Icons.person, size: 60.r, color: AppColors.primaryColor),
         ),
-        SizedBox(height: 16.h),
-        Text(
-          user?.fullName ?? "User Name",
-          style: AppTextStyles.bold18White.copyWith(color: AppColors.textPrimary),
-        ),
-        Text(
-          user?.email ?? "email@example.com",
-          style: AppTextStyles.normal16Grey,
+        CircleAvatar(
+          radius: 18.r,
+          backgroundColor: AppColors.primaryColor,
+          child: Icon(Icons.camera_alt, size: 18.r, color: Colors.white),
         ),
       ],
     );
   }
 
-  Widget _buildInfoSection(dynamic user) {
+  Widget _buildMenuSection(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -110,44 +105,77 @@ class ProfileTab extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildInfoRow(Icons.person_outline, "Full Name", user?.fullName ?? "Not set"),
-          const Divider(),
-          _buildInfoRow(Icons.email_outlined, "Email", user?.email ?? "Not set"),
-          const Divider(),
-          _buildInfoRow(Icons.calendar_today_outlined, "Age / Phone", user?.age ?? "Not set"),
-          const Divider(),
-          _buildInfoRow(Icons.work_outline, "Role", user?.role ?? "Patient"),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primaryColor, size: 24.r),
-          SizedBox(width: 16.w),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: AppTextStyles.regular12Gray),
-              Text(value, style: AppTextStyles.medium14black.copyWith(fontSize: 16)),
-            ],
+          _buildMenuItem(
+            icon: Icons.person_outline,
+            label: "Profile",
+            onTap: () {
+              Navigator.pushNamed(context, AppRoutes.profileEditing);
+            },
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            icon: Icons.privacy_tip_outlined,
+            label: "Privacy Policy",
+            onTap: () {
+              Navigator.pushNamed(context, AppRoutes.privacyPolicy);
+            },
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            icon: Icons.settings_outlined,
+            label: "Settings",
+            onTap: () {
+              Navigator.pushNamed(context, AppRoutes.settings);
+            },
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            icon: Icons.help_outline,
+            label: "Help",
+            onTap: () {
+              // Navigate to help
+            },
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            icon: Icons.logout,
+            label: "Logout",
+            isLogout: true,
+            onTap: () {
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context) {
-    return CustomElevatedButton(
-      buttonText: "Logout",
-      onPressed: () {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
-      },
-      backgroundColor: Colors.red.shade400,
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isLogout = false,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: EdgeInsets.all(8.r),
+        decoration: BoxDecoration(
+          color: isLogout ? Colors.red.withOpacity(0.1) : AppColors.primaryBlueSoft,
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        child: Icon(icon, color: isLogout ? Colors.red : AppColors.primaryColor, size: 22.r),
+      ),
+      title: Text(
+        label,
+        style: AppTextStyles.bodyLarge.copyWith(
+          color: isLogout ? Colors.red : AppColors.textPrimary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: Icon(Icons.chevron_right, color: isLogout ? Colors.red : AppColors.textTertiary, size: 20.r),
+      onTap: onTap,
+      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
     );
   }
 }
