@@ -60,6 +60,7 @@ dependencies:
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
   flutter_secure_storage: ^9.0.0
+  fluttertoast: ^9.0.0
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +72,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  build_runner: any
+  injectable_generator: ^2.0.0
 
 
 # For information on the generic Dart part of this file, see the
@@ -86,7 +89,7 @@ flutter:
 
     # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/images/doctor.jpg
+    - assets/images/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

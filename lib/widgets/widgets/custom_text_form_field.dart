@@ -13,6 +13,7 @@ class CustomTextFormField extends StatelessWidget {
    validatorFunction validator;
    bool? isObscure;
    TextEditingController ? controller;
+   TextInputType? keyboardType;
    CustomTextFormField({
      super.key,
      required this.hintText,
@@ -21,6 +22,7 @@ class CustomTextFormField extends StatelessWidget {
       this.isObscure = false,
      this.validator,
       this.controller,
+     this.keyboardType
    });
 
   @override
@@ -45,6 +47,7 @@ class CustomTextFormField extends StatelessWidget {
       validator:validator,
       controller:controller,
       style:Theme.of(context).textTheme.headlineLarge,
+      keyboardType: keyboardType??TextInputType.none,
     );
   }
   OutlineInputBorder buildBorder(Color borderColor){

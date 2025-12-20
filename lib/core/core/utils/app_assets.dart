@@ -13,4 +13,5 @@ class AppImages{
   static const String chatbotUnselectedIcon = "assets/images/chatbot_unselected.svg";
   static const String profileSelectedIcon = "assets/images/profile_selected.svg";
   static const String profileUnselectedIcon = "assets/images/profile_unselected.svg";
+  static const String dentexLogo="assets/images/dentexLogo.png";
 }

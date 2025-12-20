@@ -1,25 +1,19 @@
-
+import 'package:dentex_clean/api/config/di/di.dart';
+import 'package:dentex_clean/widgets/widgets/auth_gate.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'core/core/utils/app_router.dart';
 import 'core/core/utils/app_theme.dart';
-import 'core/core/utils/cubit/localization_cubit.dart';
-import 'core/core/utils/cubit/theme_cubit.dart';
-import 'features/splash/splash_screen.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  runApp(
-    MultiBlocProvider(
-      providers: [
-        BlocProvider<LocaleCubit>(create: (_) => LocaleCubit()),
-        BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()),
-      ],
-      child: const MyApp(),
-    ),
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
   );
+  configureDependencies();
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -27,27 +21,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeMode>(
-      builder: (context, themeMode) {
-        return BlocBuilder<LocaleCubit, Locale>(
-          builder: (context, locale) {
-            return ScreenUtilInit(
-              designSize: const Size(430, 932),
-              minTextAdapt: true,
-              splitScreenMode: true,
-              builder: (context, child) {
-                return MaterialApp(
-                  home: const SplashScreen(),
-                  locale: locale,
-                  debugShowCheckedModeBanner: false,
-                  theme: AppTheme.lightTheme,
-                  darkTheme: AppTheme.darkTheme,
-                  themeMode: ThemeMode.light,
-
-                );
-              },
-            );
-          },
+    return ScreenUtilInit(
+      designSize: const Size(430, 932),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return MaterialApp(
+          home: AuthGate(),
+          onGenerateRoute:AppRouter.generateRoute,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          themeMode: ThemeMode.light,
         );
       },
     );

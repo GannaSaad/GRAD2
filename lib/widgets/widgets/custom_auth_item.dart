@@ -41,7 +41,7 @@ class _CustomAuthItemState extends State<CustomAuthItem> {
                   child: Column(
                     mainAxisAlignment:MainAxisAlignment.center,
                     children: [
-                      Image.asset(AppImages.ambientLogo,height:100.h,width:100.w,),
+                      Image.asset(AppImages.dentexLogo,height:100.h,width:100.w,),
                       SizedBox(height:10.h,),
                       Text(widget.text1, style: AppTextStyles.semiBold24White),
                       Text(widget.text2, style: AppTextStyles.semiBold24White.copyWith(fontSize: 18)),
