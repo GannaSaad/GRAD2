@@ -12,6 +12,9 @@ import '../../../features/settings/notification_settings_screen.dart';
 import '../../../features/settings/password_manager_screen.dart';
 import '../../../features/tabs/profile_tab/profile_editing_screen.dart';
 import '../../../features/tabs/activity_tab/medical_records_screen.dart';
+import '../../../features/tabs/patients_tab/patient_details_screen.dart';
+import '../../../features/tabs/patients_tab/add_record_screen.dart';
+import '../../../features/tabs/profile_tab/managerial_staff_screen.dart';
 import 'app_routes.dart';
 
 class AppRouter {
@@ -42,6 +45,14 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const PasswordManagerScreen());
       case AppRoutes.medicalRecords:
         return MaterialPageRoute(builder: (_) => const MedicalRecordsScreen());
+      case AppRoutes.patientDetails:
+        final args = settings.arguments as Map<String, String>;
+        return MaterialPageRoute(builder: (_) => PatientDetailsScreen(patientName: args['name']!, patientImage: args['image']!));
+      case AppRoutes.addRecord:
+        final name = settings.arguments as String;
+        return MaterialPageRoute(builder: (_) => AddRecordScreen(patientName: name));
+      case AppRoutes.managerialStaff:
+        return MaterialPageRoute(builder: (_) => const ManagerialStaffScreen());
       default:
         return MaterialPageRoute(builder: (_) => LoginScreen());
     }

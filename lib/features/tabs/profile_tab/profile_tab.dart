@@ -5,9 +5,8 @@ import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../core/core/utils/cubit/theme_cubit.dart';
+import '../../auth/auth_cubit/auth_cubit.dart';
 import '../../auth/auth_cubit/auth_states.dart';
-import '../../auth/login/cubit/login_view_model.dart';
-import '../../auth/register/cubit/register_view_model.dart';
 import '../../../api/config/di/di.dart';
 
 class ProfileTab extends StatelessWidget {
@@ -15,15 +14,8 @@ class ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final loginViewModel = getIt<LoginViewModel>();
-    final registerViewModel = getIt<RegisterViewModel>();
-    
-    dynamic currentUser;
-    if (loginViewModel.state is AuthSuccess) {
-      currentUser = (loginViewModel.state as AuthSuccess).user;
-    } else if (registerViewModel.state is AuthSuccess) {
-      currentUser = (registerViewModel.state as AuthSuccess).user;
-    }
+    final authCubit = getIt<AuthCubit>();
+    final currentUser = authCubit.currentUser;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -31,7 +23,7 @@ class ProfileTab extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
           onPressed: () {
-            // Switch back to home tab or handle back
+            // Optional: Handle back navigation
           },
         ),
         title: Text("My Profile", style: AppTextStyles.bold18White.copyWith(color: AppColors.primaryColor)),
@@ -65,7 +57,7 @@ class ProfileTab extends StatelessWidget {
               style: AppTextStyles.headlineSmall.copyWith(fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 30.h),
-            _buildMenuSection(context),
+            _buildMenuSection(context, currentUser),
           ],
         ),
       ),
@@ -90,7 +82,9 @@ class ProfileTab extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuSection(BuildContext context) {
+  Widget _buildMenuSection(BuildContext context, dynamic user) {
+    final bool isDoctor = user?.role == 'doctor';
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
@@ -113,6 +107,16 @@ class ProfileTab extends StatelessWidget {
             },
           ),
           const Divider(height: 1),
+          if (isDoctor) ...[
+            _buildMenuItem(
+              icon: Icons.build_circle_outlined,
+              label: "Create Managerial Staff Account",
+              onTap: () {
+                Navigator.pushNamed(context, AppRoutes.managerialStaff);
+              },
+            ),
+            const Divider(height: 1),
+          ],
           _buildMenuItem(
             icon: Icons.privacy_tip_outlined,
             label: "Privacy Policy",
