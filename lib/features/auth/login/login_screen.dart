@@ -15,6 +15,7 @@ import '../../../core/core/utils/validation.dart';
 import '../../../widgets/widgets/custom_auth_item.dart';
 import '../../../widgets/widgets/custom_elevated_button.dart';
 import '../../../widgets/widgets/custom_text_form_field.dart';
+import '../auth_cubit/auth_cubit.dart';
 import '../auth_cubit/auth_states.dart';
 import 'cubit/login_view_model.dart';
 
@@ -57,6 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
             setState(() {
               isLoading = false;
             });
+            getIt<AuthCubit>().updateAuthenticatedUser(state.user);
             Navigator.pushReplacementNamed(context, AppRoutes.homeScreen);
           }
         },

@@ -15,4 +15,7 @@ sealed class AppRoutes {
   static const String notificationSettings = '/notificationSettings';
   static const String passwordManager = '/passwordManager';
   static const String medicalRecords = '/medicalRecords';
+  static const String patientDetails = '/patientDetails';
+  static const String addRecord = '/addRecord';
+  static const String managerialStaff = '/managerialStaff';
 }
