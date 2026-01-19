@@ -14,6 +14,15 @@ import '../auth/auth_cubit/auth_cubit.dart';
 import '../tabs/doctor_home_tab/doctor_home_tab.dart';
 import '../tabs/patients_tab/patients_tab.dart';
 import '../tabs/availability_tab/availability_tab.dart';
+import '../tabs/nurse_tabs/nurse_home_tab.dart';
+import '../tabs/nurse_tabs/inventory_management_tab.dart';
+import '../tabs/nurse_tabs/supplies_request_tab.dart';
+import '../tabs/receptionist_tabs/receptionist_home_tab.dart';
+import '../tabs/receptionist_tabs/receptionist_activity_tab.dart';
+import '../tabs/admin_tabs/admin_home_tab.dart';
+import '../tabs/admin_tabs/admin_patients_tab.dart';
+import '../tabs/admin_tabs/doctor_support_tab.dart';
+import '../tabs/admin_tabs/patient_support_tab.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,20 +63,41 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _getBody(String role) {
-    if (role == 'doctor') {
+    final normalizedRole = role.toLowerCase();
+    
+    if (normalizedRole == 'admin') {
       switch (_currentIndex) {
-        case 0:
-          return const DoctorHomeTab();
-        case 1:
-          return const PatientsTab();
-        case 2:
-          return const AvailabilityTab();
-        case 3:
-          return const ChatBotTab(); // Shagy
-        case 4:
-          return const ProfileTab();
-        default:
-          return const DoctorHomeTab();
+        case 0: return const AdminHomeTab();
+        case 1: return const AdminPatientsTab();
+        case 2: return const DoctorSupportTab();
+        case 3: return const PatientSupportTab();
+        case 4: return const ProfileTab();
+        default: return const AdminHomeTab();
+      }
+    } else if (normalizedRole == 'receptionist') {
+      switch (_currentIndex) {
+        case 0: return const ReceptionistHomeTab();
+        case 1: return const ReceptionistActivityTab();
+        case 2: return const AvailabilityTab();
+        case 3: return const ProfileTab();
+        default: return const ReceptionistHomeTab();
+      }
+    } else if (normalizedRole == 'nurse') {
+      switch (_currentIndex) {
+        case 0: return const NurseHomeTab();
+        case 1: return const InventoryManagementTab();
+        case 2: return const SuppliesRequestTab(); 
+        case 3: return const ProfileTab();
+        default: return const NurseHomeTab();
+      }
+    } else if (normalizedRole == 'doctor') {
+      switch (_currentIndex) {
+        case 0: return const DoctorHomeTab();
+        case 1: return const PatientsTab();
+        case 2: return const AvailabilityTab();
+        case 3: return const ChatBotTab(); 
+        case 4: return const ProfileTab();
+        default: return const DoctorHomeTab();
       }
     } else {
       if (_showDoctorsListing) {
@@ -80,24 +110,44 @@ class _HomeScreenState extends State<HomeScreen> {
             onAppointmentsTap: navigateToActivity,
             onAssistantTap: navigateToShagy,
           );
-        case 1:
-          return const ActivityTab();
-        case 2:
-          return const ChatBotTab();
-        case 3:
-          return const ProfileTab();
-        default:
-          return PatientHomeTab(
-            onBookDoctorTap: navigateToDoctorsListing,
-            onAppointmentsTap: navigateToActivity,
-            onAssistantTap: navigateToShagy,
-          );
+        case 1: return const ActivityTab();
+        case 2: return const ChatBotTab();
+        case 3: return const ProfileTab();
+        default: return PatientHomeTab(
+          onBookDoctorTap: navigateToDoctorsListing,
+          onAppointmentsTap: navigateToActivity,
+          onAssistantTap: navigateToShagy,
+        );
       }
     }
   }
 
   List<BottomNavigationBarItem> _getNavItems(String role) {
-    if (role == 'doctor') {
+    final normalizedRole = role.toLowerCase();
+    
+    if (normalizedRole == 'admin') {
+      return [
+        const BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Home'),
+        const BottomNavigationBarItem(icon: Icon(Icons.people_outline), activeIcon: Icon(Icons.people), label: 'Patients'),
+        const BottomNavigationBarItem(icon: Icon(Icons.support_agent), activeIcon: Icon(Icons.support_agent), label: 'Dr Support'),
+        const BottomNavigationBarItem(icon: Icon(Icons.contact_support_outlined), activeIcon: Icon(Icons.contact_support), label: 'Pt Support'),
+        const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+      ];
+    } else if (normalizedRole == 'receptionist') {
+      return [
+        const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+        const BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), activeIcon: Icon(Icons.analytics), label: 'Activity'),
+        const BottomNavigationBarItem(icon: Icon(Icons.event_available_outlined), activeIcon: Icon(Icons.event_available), label: 'Availability'),
+        const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+      ];
+    } else if (normalizedRole == 'nurse') {
+      return [
+        const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+        const BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), activeIcon: Icon(Icons.inventory_2), label: 'Inventory'),
+        const BottomNavigationBarItem(icon: Icon(Icons.pending_actions_outlined), activeIcon: Icon(Icons.pending_actions), label: 'Requests'),
+        const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+      ];
+    } else if (normalizedRole == 'doctor') {
       return [
         const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
         const BottomNavigationBarItem(icon: Icon(Icons.people_outline), activeIcon: Icon(Icons.people), label: 'Patients'),

@@ -6,9 +6,13 @@ class UserEntity {
   final String? role;
   final String? phoneNumber;
   final String? gender;
+  final String? profileImage;
   
   // Doctor specific
   final String? speciality;
+  final String? rank;
+  final String? experience;
+  final String? education;
   final String? certificates;
   
   // Patient specific
@@ -23,7 +27,11 @@ class UserEntity {
     this.role,
     this.phoneNumber,
     this.gender,
+    this.profileImage,
     this.speciality,
+    this.rank,
+    this.experience,
+    this.education,
     this.certificates,
     this.allergies,
     this.medicalInsurance,

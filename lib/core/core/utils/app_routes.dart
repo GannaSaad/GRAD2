@@ -1,4 +1,5 @@
 sealed class AppRoutes {
+  static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
   static const String homeScreen = '/homeScreen';
@@ -18,4 +19,7 @@ sealed class AppRoutes {
   static const String patientDetails = '/patientDetails';
   static const String addRecord = '/addRecord';
   static const String managerialStaff = '/managerialStaff';
+  static const String nursePatientDetails = '/nursePatientDetails';
+  static const String adminDoctorDetail = '/adminDoctorDetail';
+  static const String receptionistPatientDetails = '/receptionistPatientDetails';
 }

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -123,10 +122,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       if (registerViewModel.selectedRole == 'doctor') ...[
                         CustomTextFormField(
-                          hintText: "Speciality (e.g. Orthodontist)",
+                          hintText: "Speciality (e.g. Implantologist)",
                           prefixIcon: Icon(Icons.medical_services_outlined, color: AppColors.grayColor),
                           validator: (val) => val == null || val.isEmpty ? "Required" : null,
                           controller: registerViewModel.specialityController,
+                        ),
+                        SizedBox(height: 16.h),
+                        CustomTextFormField(
+                          hintText: "Rank (e.g. Senior Specialist)",
+                          prefixIcon: Icon(Icons.badge_outlined, color: AppColors.grayColor),
+                          validator: (val) => val == null || val.isEmpty ? "Required" : null,
+                          controller: registerViewModel.rankController,
+                        ),
+                        SizedBox(height: 16.h),
+                        CustomTextFormField(
+                          hintText: "Years Experience",
+                          keyboardType: TextInputType.number,
+                          prefixIcon: Icon(Icons.history_outlined, color: AppColors.grayColor),
+                          validator: (val) => val == null || val.isEmpty ? "Required" : null,
+                          controller: registerViewModel.experienceController,
+                        ),
+                        SizedBox(height: 16.h),
+                        CustomTextFormField(
+                          hintText: "Education (e.g. Cairo University)",
+                          prefixIcon: Icon(Icons.school_outlined, color: AppColors.grayColor),
+                          validator: (val) => val == null || val.isEmpty ? "Required" : null,
+                          controller: registerViewModel.educationController,
                         ),
                         SizedBox(height: 16.h),
                         _buildCertificatePicker(),
@@ -206,27 +227,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Upload Certificate", style: AppTextStyles.normal16Grey),
+        Text("Upload Professional Certificate", style: AppTextStyles.normal16Grey),
         SizedBox(height: 8.h),
         InkWell(
-          onTap: () {
-            // Logic to pick image
-          },
+          onTap: () => registerViewModel.pickCertificate(),
           child: Container(
-            height: 100.h,
+            height: 120.h,
             width: double.infinity,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10.r),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: AppColors.borderMedium, style: BorderStyle.solid),
               color: AppColors.lightGreyColor,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.cloud_upload_outlined, color: AppColors.primaryColor, size: 30.r),
-                Text("Select Image", style: AppTextStyles.regular12Gray),
-              ],
-            ),
+            child: registerViewModel.certificateFile != null 
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: Image.file(registerViewModel.certificateFile!, fit: BoxFit.cover),
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.cloud_upload_outlined, color: AppColors.primaryColor, size: 32.r),
+                    SizedBox(height: 8.h),
+                    Text("Select Certificate Photo", style: AppTextStyles.regular12Gray),
+                  ],
+                ),
           ),
         ),
       ],

@@ -83,7 +83,9 @@ class ProfileTab extends StatelessWidget {
   }
 
   Widget _buildMenuSection(BuildContext context, dynamic user) {
-    final bool isDoctor = user?.role == 'doctor';
+    final String role = (user?.role ?? 'patient').toLowerCase();
+    final bool isDoctor = role == 'doctor';
+    final bool isAdmin = role == 'admin';
 
     return Container(
       decoration: BoxDecoration(
@@ -103,14 +105,18 @@ class ProfileTab extends StatelessWidget {
             icon: Icons.person_outline,
             label: "Profile",
             onTap: () {
-              Navigator.pushNamed(context, AppRoutes.profileEditing);
+              if (isAdmin) {
+                _showReadOnlyProfileDialog(context, user);
+              } else {
+                Navigator.pushNamed(context, AppRoutes.profileEditing);
+              }
             },
           ),
           const Divider(height: 1),
           if (isDoctor) ...[
             _buildMenuItem(
               icon: Icons.build_circle_outlined,
-              label: "Create Managerial Staff Account",
+              label: "Managerial Staff",
               onTap: () {
                 Navigator.pushNamed(context, AppRoutes.managerialStaff);
               },
@@ -137,7 +143,11 @@ class ProfileTab extends StatelessWidget {
             icon: Icons.help_outline,
             label: "Help",
             onTap: () {
-              // Navigate to help
+              if (isAdmin) {
+                // Admin doesn't need help to text themselves
+              } else {
+                _showSupportChat(context);
+              }
             },
           ),
           const Divider(height: 1),
@@ -180,6 +190,105 @@ class ProfileTab extends StatelessWidget {
       onTap: onTap,
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+    );
+  }
+
+  void _showReadOnlyProfileDialog(BuildContext context, dynamic user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        title: const Text("Admin Profile (Read-Only)"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildReadOnlyField("Full Name", user?.fullName ?? "N/A"),
+            _buildReadOnlyField("Email", user?.email ?? "N/A"),
+            _buildReadOnlyField("Role", user?.role ?? "Admin"),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
+          Text(value, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  void _showSupportChat(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30.r))),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: EdgeInsets.all(24.r),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.support_agent, color: AppColors.primaryBlue),
+                  SizedBox(width: 12.w),
+                  Text("IT Support", style: AppTextStyles.titleLarge),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              Text("Describe your problem to the Admin", style: AppTextStyles.bodySmall),
+              SizedBox(height: 24.h),
+              TextField(
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: "Message the IT team...",
+                  filled: true,
+                  fillColor: AppColors.backgroundPrimary,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              SizedBox(height: 24.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Ticket sent successfully.")),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      ),
+                      child: const Text("Send Message"),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20.h),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

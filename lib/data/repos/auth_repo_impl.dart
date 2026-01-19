@@ -19,6 +19,9 @@ class AuthRepositoryImpl implements AuthRepo {
     required String phoneNumber,
     required String gender,
     String? speciality,
+    String? rank,
+    String? experience,
+    String? education,
     String? certificates,
     String? allergies,
     String? medicalInsurance,
@@ -32,6 +35,9 @@ class AuthRepositoryImpl implements AuthRepo {
       phoneNumber: phoneNumber,
       gender: gender,
       speciality: speciality,
+      rank: rank,
+      experience: experience,
+      education: education,
       certificates: certificates,
       allergies: allergies,
       medicalInsurance: medicalInsurance,
@@ -44,5 +50,23 @@ class AuthRepositoryImpl implements AuthRepo {
   Future<UserEntity> login({required String email, required String password}) async {
     final userModel = await _remoteDataSource.login(email: email, password: password);
     return userModel.toEntity();
+  }
+
+  @override
+  Future<UserEntity> getUserData(String uid) async {
+    final userModel = await _remoteDataSource.getUserData(uid);
+    return userModel.toEntity();
+  }
+
+  @override
+  Future<UserEntity> loginWithGoogle() async {
+    final userModel = await _remoteDataSource.loginWithGoogle();
+    return userModel.toEntity();
+  }
+
+  @override
+  Future<List<UserEntity>> getAllDoctors() async {
+    final models = await _remoteDataSource.getAllDoctors();
+    return models.map((model) => model.toEntity()).toList();
   }
 }

@@ -16,6 +16,7 @@ class CustomTextFormField extends StatelessWidget {
   final TextEditingController? controller;
   final TextInputType? keyboardType;
   final int? maxLines;
+  final bool readOnly;
 
   CustomTextFormField({
     super.key,
@@ -27,6 +28,7 @@ class CustomTextFormField extends StatelessWidget {
     this.controller,
     this.keyboardType,
     this.maxLines = 1,
+    this.readOnly = false,
   });
 
   @override
@@ -50,6 +52,7 @@ class CustomTextFormField extends StatelessWidget {
       style: Theme.of(context).textTheme.headlineLarge,
       keyboardType: keyboardType ?? TextInputType.text,
       maxLines: maxLines,
+      readOnly: readOnly,
     );
   }
 

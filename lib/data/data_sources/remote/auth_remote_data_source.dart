@@ -11,8 +11,14 @@ abstract class AuthRemoteDataSource {
     required String phoneNumber,
     required String gender,
     String? speciality,
+    String? rank,
+    String? experience,
+    String? education,
     String? certificates,
     String? allergies,
     String? medicalInsurance,
   });
+  Future<UserModel> getUserData(String uid);
+  Future<UserModel> loginWithGoogle();
+  Future<List<UserModel>> getAllDoctors();
 }

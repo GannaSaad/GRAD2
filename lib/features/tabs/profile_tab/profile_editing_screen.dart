@@ -5,9 +5,7 @@ import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../widgets/widgets/custom_elevated_button.dart';
 import '../../../widgets/widgets/custom_text_form_field.dart';
-import '../../auth/auth_cubit/auth_states.dart';
-import '../../auth/login/cubit/login_view_model.dart';
-import '../../auth/register/cubit/register_view_model.dart';
+import '../../auth/auth_cubit/auth_cubit.dart';
 
 class ProfileEditingScreen extends StatefulWidget {
   const ProfileEditingScreen({super.key});
@@ -20,27 +18,24 @@ class _ProfileEditingScreenState extends State<ProfileEditingScreen> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
+  late String _role;
 
   @override
   void initState() {
     super.initState();
-    final loginViewModel = getIt<LoginViewModel>();
-    final registerViewModel = getIt<RegisterViewModel>();
-    
-    dynamic user;
-    if (loginViewModel.state is AuthSuccess) {
-      user = (loginViewModel.state as AuthSuccess).user;
-    } else if (registerViewModel.state is AuthSuccess) {
-      user = (registerViewModel.state as AuthSuccess).user;
-    }
+    final authCubit = getIt<AuthCubit>();
+    final user = authCubit.currentUser;
 
     _nameController = TextEditingController(text: user?.fullName ?? "");
     _phoneController = TextEditingController(text: user?.phoneNumber ?? "");
     _emailController = TextEditingController(text: user?.email ?? "");
+    _role = (user?.role ?? 'patient').toLowerCase();
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isStaff = _role == 'nurse' || _role == 'receptionist';
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
@@ -52,14 +47,6 @@ class _ProfileEditingScreenState extends State<ProfileEditingScreen> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppColors.primaryColor),
-            onPressed: () {
-              // Navigate to settings if needed, but the request says settings icon here
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(20.r),
@@ -84,10 +71,19 @@ class _ProfileEditingScreenState extends State<ProfileEditingScreen> {
             CustomTextFormField(
               hintText: "Email",
               controller: _emailController,
+              readOnly: isStaff, // Staff cannot change email
               prefixIcon: const Icon(Icons.email_outlined),
               keyboardType: TextInputType.emailAddress,
             ),
-            SizedBox(height: 100.h), // Space for button
+            if (isStaff)
+              Padding(
+                padding: EdgeInsets.only(top: 8.h),
+                child: Text(
+                  "Email change is disabled for staff accounts.",
+                  style: AppTextStyles.labelSmall.copyWith(color: AppColors.error),
+                ),
+              ),
+            SizedBox(height: 100.h), 
           ],
         ),
       ),
@@ -96,7 +92,6 @@ class _ProfileEditingScreenState extends State<ProfileEditingScreen> {
         child: CustomElevatedButton(
           buttonText: "Update Profile",
           onPressed: () {
-            // Logic to update profile
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Profile updated successfully!")),
