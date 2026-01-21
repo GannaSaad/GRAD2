@@ -1,53 +1,57 @@
 import 'dart:ui';
 
 class AppColors {
-  // Dentix Primary Colors - Warm beige/sand theme
-  static const Color backgroundPrimary = Color(0xFFF5F2ED); // Warm beige/sand background
-  static const Color backgroundSecondary = Color(0xFFF9F7F4); // Lighter sand variant
-  static const Color cardBackground = Color(0xFFFFFFFB); // Soft off-white for cards
-  
-  // Primary Blue System
-  static const Color primaryBlue = Color(0xFF2B5CE6); // Main blue for actions
-  static const Color primaryBlueLight = Color(0xFF4A7BF7); // Lighter blue for hover/active
-  static const Color primaryBlueSoft = Color(0xFFE8F0FF); // Very light blue for backgrounds
-  
-  // Text Colors - Healthcare-grade readability
-  static const Color textPrimary = Color(0xFF2C2C2E); // Dark grey for primary text
-  static const Color textSecondary = Color(0xFF6D6D70); // Medium grey for secondary text
-  static const Color textTertiary = Color(0xFF8E8E93); // Light grey for tertiary text
-  static const Color textPlaceholder = Color(0xFFAEAEB2); // Placeholder text
-  
-  // Neutral System
-  static const Color borderSoft = Color(0xFFE5E5E7); // Soft borders
-  static const Color borderMedium = Color(0xFFD1D1D6); // Medium borders
-  static const Color shadowColor = Color(0x0A000000); // Subtle shadow (4% black)
-  
-  // Status Colors - Medical-friendly soft tones
-  static const Color success = Color(0xFF30D158); // Soft green
-  static const Color successLight = Color(0xFFE8F5E8); // Light green background
-  static const Color warning = Color(0xFFFF9F0A); // Soft orange
-  static const Color warningLight = Color(0xFFFFF4E6); // Light orange background
-  static const Color error = Color(0xFFFF3B30); // Soft red
-  static const Color errorLight = Color(0xFFFFEBEA); // Light red background
-  
-  // System Colors (maintaining compatibility)
-  static const Color whiteColor = Color(0xFFFFFFFF);
-  static const Color blackColor = Color(0xFF000000);
-  static const Color transparentColor = Color(0x00000000);
-  
-  // Dark Mode Colors (medical-friendly)
-  static const Color darkBackground = Color(0xFF1C1C1E);
-  static const Color darkCard = Color(0xFF2C2C2E);
-  static const Color darkBorder = Color(0xFF38383A);
-  
-  // Legacy colors (for backward compatibility)
-  static const Color primaryColor = primaryBlue;
-  static const Color grayColor = textSecondary;
-  static const Color placeholderTextColor = textPlaceholder;
-  static const Color redColor = error;
-  static const Color lightGreyColor = backgroundSecondary;
-  static const Color mutedForeground = textTertiary;
-  static const Color pinkColor = Color(0xFFFF2D55);
-  static const Color orangeColor = warning;
-  static const Color greenColor = success;
+  // Backgrounds - Warm Beige & Cream Palette
+  static const Color backgroundPrimary   = Color(0xFFF9F6F2); // Warm cream/off-white
+  static const Color backgroundSecondary = Color(0xFFEFE9E1); // Soft sand beige
+  static const Color cardBackground      = Color(0xFFFFFFFF); // Pure white for cards
+
+  // Brand Colors - Rich Browns & Elegant Beiges
+  // We keep 'primaryBlue' name so existing code doesn't break, but change value to Brown
+  static const Color primaryBlue      = Color(0xFF6F4E37); // Rich Coffee Brown
+  static const Color primaryBlueLight = Color(0xFFD7CCC8); // Soft Latte
+  static const Color primaryBlueSoft  = Color(0xFFEFEBE9); // Very light linen
+  static const Color primaryGold      = Color(0xFFC5A380); // Classic Beige Gold
+  static const Color primaryGoldLight = Color(0xFFF1EBE1); // Pale Parchment
+
+  // Text - Deep Espresso & Cocoa Tones
+  static const Color textPrimary      = Color(0xFF3E2723); // Deepest Espresso
+  static const Color textSecondary    = Color(0xFF5D4037); // Medium Cocoa
+  static const Color textTertiary     = Color(0xFF8D6E63); // Muted Brown
+  static const Color textPlaceholder  = Color(0xFFBCAAA4); // Muted Tan hint text
+
+  // Borders & Accents
+  static const Color borderSoft   = Color(0xFFE0D7D0);
+  static const Color borderMedium = Color(0xFFCBBFBB);
+  static const Color shadowColor  = Color(0x1A4E342E); // Soft brown-tinted shadow
+
+  // Status Colors (Warm variants)
+  static const Color success      = Color(0xFF689F38); // Olive Green
+  static const Color successLight = Color(0xFFF1F8E9);
+  static const Color warning      = Color(0xFFEF6C00); // Deep Amber
+  static const Color warningLight = Color(0xFFFFF3E0);
+  static const Color error        = Color(0xFFB71C1C); // Deep Brick Red
+  static const Color errorLight   = Color(0xFFFFEBEE);
+
+  // System Colors
+  static const Color whiteColor        = Color(0xFFFFFFFF);
+  static const Color blackColor        = Color(0xFF1B120F); // Warm brownish-black
+  static const Color transparentColor  = Color(0x00000000);
+
+  // Dark Mode (Rich Dark Browns)
+  static const Color darkBackground = Color(0xFF211A18);
+  static const Color darkCard       = Color(0xFF2D2421);
+  static const Color darkBorder     = Color(0xFF3E312D);
+
+  // Legacy colors (Directly used in LoginScreen)
+  static const Color primaryColor         = primaryBlue;     // Now Brown
+  static const Color grayColor            = textSecondary;   // Now Cocoa Grey
+  static const Color placeholderTextColor = textPlaceholder; // Now Muted Tan
+  static const Color redColor             = error;           // Now Brick Red
+  static const Color lightGreyColor        = backgroundSecondary;
+  static const Color mutedForeground       = textTertiary;
+
+  // Custom palette extensions
+  static const Color accentGold = primaryGold;
+  static const Color pinkColor  = Color(0xFFD81B60);
 }

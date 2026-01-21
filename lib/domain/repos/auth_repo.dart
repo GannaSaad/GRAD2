@@ -10,13 +10,20 @@ abstract class AuthRepo {
     required String phoneNumber,
     required String gender,
     String? speciality,
+    String? rank,
+    String? experience,
+    String? education,
     String? certificates,
     String? allergies,
     String? medicalInsurance,
   });
 
   Future<UserEntity> login({
-    required String email,
+    required String email, 
     required String password
   });
+
+  Future<UserEntity> getUserData(String uid);
+  Future<UserEntity> loginWithGoogle();
+  Future<List<UserEntity>> getAllDoctors();
 }

@@ -1,0 +1,109 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:injectable/injectable.dart';
+import '../../../data/data_sources/remote/appointment_remote_data_source.dart';
+import '../../../data/models/appointment_model.dart';
+
+@Injectable(as: AppointmentRemoteDataSource)
+class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
+  final FirebaseFirestore _firestore;
+
+  AppointmentRemoteDataSourceImpl(this._firestore);
+
+  @override
+  Future<void> bookAppointment(AppointmentModel appointment) async {
+    try {
+      await _firestore
+          .collection('appointments')
+          .doc(appointment.id)
+          .set(appointment.toFirestore());
+    } catch (e) {
+      throw Exception('Failed to book appointment: ${e.toString()}');
+    }
+  }
+
+  @override
+  Stream<List<AppointmentModel>> getPatientAppointments(String patientId) {
+    return _firestore
+        .collection('appointments')
+        .where('patientId', isEqualTo: patientId)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AppointmentModel.fromFirestore(doc.data(), doc.id))
+            .toList());
+  }
+
+  @override
+  Stream<List<AppointmentModel>> getDoctorAppointments(String doctorId) {
+    return _firestore
+        .collection('appointments')
+        .where('doctorId', isEqualTo: doctorId)
+        .orderBy('date', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AppointmentModel.fromFirestore(doc.data(), doc.id))
+            .toList());
+  }
+
+  @override
+  Stream<List<AppointmentModel>> getTodayAppointments() {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    return _firestore
+        .collection('appointments')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+        .orderBy('date', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AppointmentModel.fromFirestore(doc.data(), doc.id))
+            .toList());
+  }
+
+  @override
+  Future<void> cancelAppointment(String appointmentId) async {
+    try {
+      await _firestore.collection('appointments').doc(appointmentId).update({
+        'status': 'Cancelled',
+      });
+    } catch (e) {
+      throw Exception('Failed to cancel appointment: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<void> rescheduleAppointment(
+      String appointmentId, DateTime newDate, String newTime) async {
+    try {
+      await _firestore.collection('appointments').doc(appointmentId).update({
+        'date': Timestamp.fromDate(newDate),
+        'time': newTime,
+        'status': 'Pending',
+      });
+    } catch (e) {
+      throw Exception('Failed to reschedule appointment: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<List<String>> getBookedSlots(String doctorId, DateTime date) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+      final snapshot = await _firestore
+          .collection('appointments')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+          .where('status', isNotEqualTo: 'Cancelled')
+          .get();
+
+      return snapshot.docs.map((doc) => doc.data()['time'] as String).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch booked slots: ${e.toString()}');
+    }
+  }
+}

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../widgets/widgets/custom_elevated_button.dart';
+import 'cubit/booking_view_model.dart';
 import 'doctors_listing_screen.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -20,79 +23,152 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   String? _selectedTime;
+  final BookingViewModel _viewModel = getIt<BookingViewModel>();
 
-  // Mock availability data
-  final List<int> _unavailableDays = [15, 20, 25];
-  final List<String> _timeSlots = [
+  final List<String> _allTimeSlots = [
     "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM",
     "11:00 AM", "11:30 AM", "01:00 PM", "01:30 PM",
     "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM"
   ];
-  final List<String> _bookedSlots = ["10:30 AM", "02:00 PM"];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initial fetch for today if needed
+    _viewModel.fetchBookedSlots(widget.doctor.id, DateTime.now());
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text("Book Appointment", style: AppTextStyles.titleLarge),
+          centerTitle: true,
         ),
-        title: Text("Book Appointment", style: AppTextStyles.titleLarge),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfessionalHeader(),
-            SizedBox(height: 30.h),
-            
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: Text("Select a Date & Time", style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
-            ),
-            SizedBox(height: 16.h),
-            
-            _buildAdvancedCalendarSection(),
-            
-            if (_selectedDay != null) ...[
+        body: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildProfessionalHeader(),
               SizedBox(height: 30.h),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
-                child: Text("Available Time Slots", style: AppTextStyles.titleMedium),
+                child: Text("Select a Date & Time", style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
               ),
               SizedBox(height: 16.h),
-              _buildTimeSlotsGrid(),
-            ],
+              _buildAdvancedCalendarSection(),
+              
+              if (_selectedDay != null) ...[
+                SizedBox(height: 30.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Text("Available Time Slots", style: AppTextStyles.titleMedium),
+                ),
+                SizedBox(height: 16.h),
+                _buildDynamicTimeSlotsGrid(),
+              ],
 
-            SizedBox(height: 30.h),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: _buildSummaryCard(),
-            ),
-            SizedBox(height: 40.h),
-            
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: CustomElevatedButton(
-                buttonText: "Continue to Payment",
-                onPressed: (_selectedDay != null && _selectedTime != null)
-                    ? () => Navigator.pushNamed(context, AppRoutes.paymentMethod)
-                    : null,
-                backgroundColor: (_selectedDay != null && _selectedTime != null)
-                    ? AppColors.primaryBlue
-                    : AppColors.grayColor,
+              SizedBox(height: 30.h),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: _buildSummaryCard(),
               ),
-            ),
-            SizedBox(height: 30.h),
-          ],
+              SizedBox(height: 40.h),
+              
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: CustomElevatedButton(
+                  buttonText: "Continue to Payment",
+                  onPressed: (_selectedDay != null && _selectedTime != null)
+                      ? () => Navigator.pushNamed(
+                            context, 
+                            AppRoutes.paymentMethod, 
+                            arguments: {
+                              'doctor': widget.doctor,
+                              'date': _selectedDay,
+                              'time': _selectedTime,
+                            }
+                          )
+                      : null,
+                  backgroundColor: (_selectedDay != null && _selectedTime != null)
+                      ? AppColors.primaryBlue
+                      : AppColors.grayColor,
+                ),
+              ),
+              SizedBox(height: 30.h),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDynamicTimeSlotsGrid() {
+    return BlocBuilder<BookingViewModel, BookingState>(
+      builder: (context, state) {
+        if (state is BookingLoading) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
+        }
+
+        List<String> bookedSlots = [];
+        if (state is BookedSlotsLoaded) {
+          bookedSlots = state.bookedSlots;
+        }
+
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24.w),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 12.h,
+              crossAxisSpacing: 12.w,
+              childAspectRatio: 2.2,
+            ),
+            itemCount: _allTimeSlots.length,
+            itemBuilder: (context, index) {
+              final time = _allTimeSlots[index];
+              final isBooked = bookedSlots.contains(time);
+              final isSelected = _selectedTime == time;
+
+              return GestureDetector(
+                onTap: isBooked ? null : () {
+                  setState(() {
+                    _selectedTime = time;
+                  });
+                },
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.primaryBlue : (isBooked ? AppColors.backgroundPrimary.withOpacity(0.5) : AppColors.cardBackground),
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: isSelected ? AppColors.primaryBlue : AppColors.borderSoft, width: 1.5),
+                  ),
+                  child: Text(
+                    time,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: isSelected ? Colors.white : (isBooked ? AppColors.textTertiary.withOpacity(0.5) : AppColors.textPrimary),
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      decoration: isBooked ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -119,7 +195,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(widget.doctor.name, style: AppTextStyles.titleLarge),
-                  Text("Dental Consultation", style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.w600)),
+                  Text(widget.doctor.specialty, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.w600)),
                 ],
               ),
             ],
@@ -221,22 +297,30 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             final day = index - (firstDayOfMonth - 2);
             final date = DateTime(_focusedDay.year, _focusedDay.month, day);
             final isSelected = _selectedDay != null && DateUtils.isSameDay(_selectedDay!, date);
-            final isUnavailable = _unavailableDays.contains(day) || date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+            final isToday = DateUtils.isSameDay(DateTime.now(), date);
+            final isPast = date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
 
             return GestureDetector(
-              onTap: isUnavailable ? null : () => setState(() => _selectedDay = date),
+              onTap: isPast ? null : () {
+                setState(() {
+                  _selectedDay = date;
+                  _selectedTime = null; // Reset time when date changes
+                });
+                _viewModel.fetchBookedSlots(widget.doctor.id, date);
+              },
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primaryBlue : Colors.transparent,
                   shape: BoxShape.circle,
+                  border: isToday && !isSelected ? Border.all(color: AppColors.primaryBlue, width: 1) : null,
                 ),
                 child: Text(
                   "$day",
                   style: AppTextStyles.labelMedium.copyWith(
-                    color: isSelected ? Colors.white : (isUnavailable ? AppColors.textTertiary : AppColors.textPrimary),
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    decoration: isUnavailable ? TextDecoration.lineThrough : null,
+                    color: isSelected ? Colors.white : (isPast ? AppColors.textTertiary : AppColors.textPrimary),
+                    fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
+                    decoration: isPast ? TextDecoration.lineThrough : null,
                   ),
                 ),
               ),
@@ -244,47 +328,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           },
         ),
       ],
-    );
-  }
-
-  Widget _buildTimeSlotsGrid() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24.w),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 12.h,
-          crossAxisSpacing: 12.w,
-          childAspectRatio: 2.2,
-        ),
-        itemCount: _timeSlots.length,
-        itemBuilder: (context, index) {
-          final time = _timeSlots[index];
-          final isBooked = _bookedSlots.contains(time);
-          final isSelected = _selectedTime == time;
-
-          return GestureDetector(
-            onTap: isBooked ? null : () => setState(() => _selectedTime = time),
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primaryBlue : (isBooked ? AppColors.backgroundPrimary : AppColors.cardBackground),
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: isSelected ? AppColors.primaryBlue : AppColors.borderSoft, width: 1.5),
-              ),
-              child: Text(
-                time,
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: isSelected ? Colors.white : (isBooked ? AppColors.textTertiary : AppColors.textPrimary),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 
