@@ -15,24 +15,39 @@ import '../../../features/tabs/activity_tab/medical_records_screen.dart';
 import '../../../features/tabs/patients_tab/patient_details_screen.dart';
 import '../../../features/tabs/patients_tab/add_record_screen.dart';
 import '../../../features/tabs/profile_tab/managerial_staff_screen.dart';
+import '../../../features/tabs/nurse_tabs/nurse_patient_details_screen.dart';
+import '../../../features/tabs/admin_tabs/admin_doctor_detail_screen.dart';
+import '../../../features/onboarding/onboarding_screen.dart';
+import '../../../features/tabs/receptionist_tabs/receptionist_patient_details_screen.dart';
+import '../../../features/tabs/admin_tabs/add_doctor_screen.dart'; // Added this line
+import '../../../widgets/widgets/auth_gate.dart';
 import 'app_routes.dart';
 
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case AppRoutes.onboarding:
+        return MaterialPageRoute(builder: (_) => const OnboardingScreen());
       case AppRoutes.login:
         return MaterialPageRoute(builder: (_) => LoginScreen());
       case AppRoutes.register:
         return MaterialPageRoute(builder: (_) => RegisterScreen());
       case AppRoutes.homeScreen:
-        return MaterialPageRoute(builder: (_) => HomeScreen());
+        return MaterialPageRoute(builder: (_) => const AuthGate());
       case AppRoutes.doctorsListing:
         return MaterialPageRoute(builder: (_) => const DoctorsListingScreen());
       case AppRoutes.bookAppointment:
         final doctor = settings.arguments as Doctor;
         return MaterialPageRoute(builder: (_) => BookAppointmentScreen(doctor: doctor));
       case AppRoutes.paymentMethod:
-        return MaterialPageRoute(builder: (_) => const PaymentMethodScreen());
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => PaymentMethodScreen(
+            doctor: args['doctor'] as Doctor,
+            date: args['date'] as DateTime,
+            time: args['time'] as String,
+          ),
+        );
       case AppRoutes.privacyPolicy:
         return MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen());
       case AppRoutes.settings:
@@ -53,6 +68,23 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => AddRecordScreen(patientName: name));
       case AppRoutes.managerialStaff:
         return MaterialPageRoute(builder: (_) => const ManagerialStaffScreen());
+      case AppRoutes.nursePatientDetails:
+        final args = settings.arguments as Map<String, String>;
+        return MaterialPageRoute(builder: (_) => NursePatientDetailsScreen(patientName: args['name']!, patientImage: args['image']!));
+      case AppRoutes.adminDoctorDetail:
+        final doctor = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => AdminDoctorDetailScreen(doctor: doctor));
+      case AppRoutes.receptionistPatientDetails:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(builder: (_) => ReceptionistPatientDetailsScreen(
+          patientName: args['name']!, 
+          patientImage: args['image']!,
+          treatment: args['case']!,
+          time: args['time']!,
+          patientId: args['patientId'],
+        ));
+      case AppRoutes.addDoctor: // Added this line
+        return MaterialPageRoute(builder: (_) => const AddDoctorScreen());
       default:
         return MaterialPageRoute(builder: (_) => LoginScreen());
     }
