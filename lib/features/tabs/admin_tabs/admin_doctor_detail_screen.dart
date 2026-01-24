@@ -10,12 +10,12 @@ class AdminDoctorDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock patient data for this doctor
-    final List<Map<String, String>> assignedPatients = [
-      {"name": "Ahmed Mansour", "id": "PT-0012", "lastVisit": "20 Dec 2024", "status": "Stable"},
-      {"name": "Layla Farid", "id": "PT-0045", "lastVisit": "18 Dec 2024", "status": "In Treatment"},
-      {"name": "Yassin Kareem", "id": "PT-0088", "lastVisit": "15 Dec 2024", "status": "Completed"},
-    ];
+    // Provide safe defaults to prevent 'Null' is not a subtype of 'String' crash
+    final String name = doctor['name'] ?? "Unknown Doctor";
+    final String field = doctor['field'] ?? doctor['specialty'] ?? "General Dentist";
+    final String location = doctor['location'] ?? "Maadi, Cairo";
+    final String patients = doctor['patients']?.toString() ?? "0";
+    final String image = doctor['image'] ?? "assets/images/doctor.jpg";
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -35,22 +35,26 @@ class AdminDoctorDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDoctorProfileSummary(),
+            _buildDoctorProfileSummary(name, field, location, image),
             SizedBox(height: 32.h),
             _buildSectionHeader("Credentials & Affiliations"),
             SizedBox(height: 12.h),
             _buildCredentialsCard(),
             SizedBox(height: 32.h),
-            _buildSectionHeader("Assigned Patients (${doctor['patients']})"),
+            _buildSectionHeader("Clinical Activity Summary"),
             SizedBox(height: 16.h),
-            _buildPatientsList(assignedPatients),
+            _buildStatsRow(patients),
+            SizedBox(height: 32.h),
+            _buildSectionHeader("Account Management"),
+            SizedBox(height: 12.h),
+            _buildManagementActions(context, name),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDoctorProfileSummary() {
+  Widget _buildDoctorProfileSummary(String name, String field, String location, String image) {
     return Container(
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
@@ -62,16 +66,17 @@ class AdminDoctorDetailScreen extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 40.r,
-            backgroundImage: AssetImage(doctor["image"]),
+            backgroundColor: AppColors.primaryBlueSoft,
+            child: Icon(Icons.person, size: 40.r, color: AppColors.primaryBlue),
           ),
           SizedBox(width: 20.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(doctor["name"], style: AppTextStyles.headlineSmall.copyWith(fontWeight: FontWeight.bold)),
-                Text(doctor["field"], style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
-                Text(doctor["location"], style: AppTextStyles.bodySmall),
+                Text(name, style: AppTextStyles.headlineSmall.copyWith(fontWeight: FontWeight.bold)),
+                Text(field, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
+                Text(location, style: AppTextStyles.bodySmall),
               ],
             ),
           ),
@@ -95,11 +100,11 @@ class AdminDoctorDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCredRow(Icons.school_outlined, "Ph.D. in Specialized Medicine"),
+          _buildCredRow(Icons.school_outlined, "Verified Professional Degree"),
           SizedBox(height: 12.h),
-          _buildCredRow(Icons.business_outlined, "Affiliated with City General Hospital"),
+          _buildCredRow(Icons.verified_user_outlined, "Medical License Valid"),
           SizedBox(height: 12.h),
-          _buildCredRow(Icons.verified_outlined, "Board Certified Specialist"),
+          _buildCredRow(Icons.verified_outlined, "Dentix Premium Network Member"),
         ],
       ),
     );
@@ -115,50 +120,75 @@ class AdminDoctorDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPatientsList(List<Map<String, String>> patients) {
-    return Column(
-      children: patients.map((p) => Container(
-        margin: EdgeInsets.only(bottom: 12.h),
+  Widget _buildStatsRow(String patientCount) {
+    return Row(
+      children: [
+        _buildStatItem("Total Patients", patientCount, Icons.people_outline, Colors.blue),
+        SizedBox(width: 16.w),
+        _buildStatItem("Revenue", "Live Sync", Icons.monetization_on_outlined, Colors.green),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
         padding: EdgeInsets.all(16.r),
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: AppColors.borderSoft),
         ),
-        child: Row(
+        child: Column(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(p["name"]!, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
-                  Text("ID: ${p["id"]} • Last Visit: ${p["lastVisit"]}", style: AppTextStyles.labelSmall),
-                ],
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-              decoration: BoxDecoration(
-                color: _getStatusColor(p["status"]!).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Text(
-                p["status"]!,
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: _getStatusColor(p["status"]!),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            Icon(icon, color: color, size: 24.r),
+            SizedBox(height: 8.h),
+            Text(value, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+            Text(label, style: AppTextStyles.labelSmall),
           ],
         ),
-      )).toList(),
+      ),
     );
   }
 
-  Color _getStatusColor(String status) {
-    if (status == 'Completed') return AppColors.success;
-    if (status == 'In Treatment') return Colors.orange;
-    return AppColors.primaryBlue;
+  Widget _buildManagementActions(BuildContext context, String name) {
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.edit_outlined, color: AppColors.primaryBlue),
+          title: const Text("Edit Permissions"),
+          onTap: () {},
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          tileColor: AppColors.cardBackground,
+        ),
+        SizedBox(height: 8.h),
+        ListTile(
+          leading: const Icon(Icons.block_flipped, color: Colors.red),
+          title: const Text("Suspend Account", style: TextStyle(color: Colors.red)),
+          onTap: () {
+            _showDeleteConfirm(context, name);
+          },
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          tileColor: Colors.red.withOpacity(0.05),
+        ),
+      ],
+    );
+  }
+
+  void _showDeleteConfirm(BuildContext context, String name) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Suspension"),
+        content: Text("Are you sure you want to suspend Dr. $name's clinical access?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Confirm", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'dart:math';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import '../../auth/auth_cubit/auth_cubit.dart';
+import '../../../domain/entities/appointment_entity.dart';
+import '../patients_tab/cubit/patients_view_model.dart';
 
 class ReceptionistHomeTab extends StatefulWidget {
   const ReceptionistHomeTab({super.key});
@@ -14,98 +18,95 @@ class ReceptionistHomeTab extends StatefulWidget {
 }
 
 class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
+  late PatientsViewModel _viewModel;
   DateTime _selectedDate = DateTime.now();
-
-  final List<Map<String, String>> _patientPool = [
-    {"name": "Ahmed Mansour", "case": "Root Canal - Phase 2", "image": "assets/images/patient.jpeg"},
-    {"name": "Layla Farid", "case": "Routine Checkup", "image": "assets/images/patient1.jpeg"},
-    {"name": "Yassin Kareem", "case": "Tooth Extraction", "image": "assets/images/patient2.jpeg"},
-    {"name": "Mariam Roushdy", "case": "Teeth Whitening", "image": "assets/images/patient3.jpeg"},
-    {"name": "Hassan Zaki", "case": "Braces Adjustment", "image": "assets/images/patient4.jpeg"},
-    {"name": "Sara Ahmed", "case": "Consultation", "image": "assets/images/patient5.jpeg"},
-    {"name": "Omar Ali", "case": "Scaling & Polishing", "image": "assets/images/patient6.jpeg"},
-  ];
-
-  final Map<String, List<Map<String, String>>> _dailySchedules = {};
 
   @override
   void initState() {
     super.initState();
-    _generateScheduleForDate(_selectedDate);
+    _viewModel = getIt<PatientsViewModel>();
+    _fetchAppointments();
   }
 
-  void _generateScheduleForDate(DateTime date) {
-    final String dateKey = DateFormat('yyyy-MM-dd').format(date);
-    if (!_dailySchedules.containsKey(dateKey)) {
-      final random = Random(date.day + date.month + date.year);
-      final int count = 4 + random.nextInt(3); // 4 to 6 patients
-      final shuffledPool = List<Map<String, String>>.from(_patientPool)..shuffle(random);
-      
-      final List<String> times = ["09:00 AM", "10:30 AM", "01:00 PM", "02:30 PM", "04:00 PM", "05:30 PM"];
-      final List<Map<String, String>> schedule = [];
-      
-      for (int i = 0; i < count && i < times.length; i++) {
-        final patient = Map<String, String>.from(shuffledPool[i]);
-        patient["time"] = times[i];
-        schedule.add(patient);
-      }
-      _dailySchedules[dateKey] = schedule;
+  void _fetchAppointments() {
+    final user = getIt<AuthCubit>().currentUser;
+    if (user != null && user.assignedDoctorId != null) {
+      _viewModel.getAppointmentsForDoctor(user.assignedDoctorId!);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final String dateKey = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final List<Map<String, String>> schedule = _dailySchedules[dateKey] ?? [];
+    final user = getIt<AuthCubit>().currentUser;
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _buildCalendarStrip(),
-            SizedBox(height: 24.h),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: Text(
-                "Today's Schedule",
-                style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Expanded(
-              child: ListView.builder(
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(user?.fullName ?? "Receptionist"),
+              _buildNurseProfileCard(user?.assignedDoctorName ?? "Doctor"),
+              SizedBox(height: 20.h),
+              _buildCalendarStrip(),
+              SizedBox(height: 24.h),
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
-                physics: const BouncingScrollPhysics(),
-                itemCount: schedule.length,
-                itemBuilder: (context, index) {
-                  return _buildAppointmentCard(schedule[index]);
-                },
+                child: Text(
+                  "Scheduled Appointments",
+                  style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
               ),
-            ),
-          ],
+              SizedBox(height: 16.h),
+              Expanded(
+                child: _buildScheduleList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(String name) {
     return Container(
-      padding: EdgeInsets.all(24.r),
+      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Welcome back,",
-            style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
+          Text("Welcome back,", style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary)),
+          Text(name, style: AppTextStyles.headlineMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNurseProfileCard(String doctorName) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 24.w),
+      padding: EdgeInsets.all(16.r),
+      decoration: BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.circular(20.r),
+        boxShadow: [BoxShadow(color: AppColors.primaryBlue.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 25.r,
+            backgroundColor: Colors.white24,
+            child: const Icon(Icons.person, color: Colors.white),
           ),
-          Text(
-            "Ganna Saad",
-            style: AppTextStyles.headlineMedium.copyWith(
-              color: AppColors.primaryBlue, // Dark Coffee Brown
-              fontWeight: FontWeight.w900,
+          SizedBox(width: 16.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Assigned to: Dr. $doctorName", style: AppTextStyles.titleSmall.copyWith(color: Colors.white)),
+                Text("Front Desk Coordinator", style: AppTextStyles.labelSmall.copyWith(color: Colors.white70)),
+              ],
             ),
           ),
         ],
@@ -114,6 +115,7 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
   }
 
   Widget _buildCalendarStrip() {
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
     return Container(
       height: 100.h,
       padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -122,16 +124,11 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
         padding: EdgeInsets.symmetric(horizontal: 15.w),
         itemCount: 14,
         itemBuilder: (context, index) {
-          DateTime date = DateTime.now().add(Duration(days: index));
+          DateTime date = today.add(Duration(days: index));
           bool isSelected = DateUtils.isSameDay(_selectedDate, date);
 
           return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedDate = date;
-                _generateScheduleForDate(date);
-              });
-            },
+            onTap: () => setState(() => _selectedDate = date),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               width: 65.w,
@@ -140,29 +137,17 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
                 color: isSelected ? AppColors.primaryBlue : AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(20.r),
                 boxShadow: isSelected ? [
-                  BoxShadow(color: AppColors.primaryBlue.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))
+                  BoxShadow(color: AppColors.primaryBlue.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))
                 ] : [
-                  BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))
                 ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    DateFormat('E').format(date),
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: isSelected ? Colors.white70 : AppColors.textSecondary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text(DateFormat('E').format(date), style: AppTextStyles.labelSmall.copyWith(color: isSelected ? Colors.white70 : AppColors.textSecondary, fontWeight: FontWeight.bold)),
                   SizedBox(height: 6.h),
-                  Text(
-                    "${date.day}",
-                    style: AppTextStyles.titleLarge.copyWith(
-                      color: isSelected ? Colors.white : AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                  Text("${date.day}", style: AppTextStyles.titleLarge.copyWith(color: isSelected ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.w900)),
                 ],
               ),
             ),
@@ -172,14 +157,45 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
     );
   }
 
-  Widget _buildAppointmentCard(Map<String, String> data) {
+  Widget _buildScheduleList() {
+    return BlocBuilder<PatientsViewModel, PatientsState>(
+      builder: (context, state) {
+        if (state is PatientsLoading) return const Center(child: CircularProgressIndicator());
+        if (state is PatientsFailure) return Center(child: Text(state.message));
+        if (state is PatientsSuccess) {
+          final dailyAppointments = state.appointments.where((a) => DateUtils.isSameDay(a.date, _selectedDate)).toList();
+          
+          if (dailyAppointments.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.event_busy, color: AppColors.textPlaceholder, size: 48.r),
+                  SizedBox(height: 12.h),
+                  Text("No appointments for this day", style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: EdgeInsets.symmetric(horizontal: 24.w),
+            physics: const BouncingScrollPhysics(),
+            itemCount: dailyAppointments.length,
+            itemBuilder: (context, index) => _buildAppointmentCard(dailyAppointments[index]),
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildAppointmentCard(AppointmentEntity appointment) {
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Material(
         color: AppColors.cardBackground,
@@ -191,10 +207,11 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
               context,
               AppRoutes.receptionistPatientDetails,
               arguments: {
-                'name': data["name"]!,
-                'image': data["image"]!,
-                'case': data["case"]!,
-                'time': data["time"]!,
+                'name': appointment.patientName,
+                'image': appointment.patientImage ?? 'assets/images/patient.jpeg',
+                'case': appointment.caseDescription,
+                'time': appointment.time,
+                'patientId': appointment.patientId, // Added this line
               },
             );
           },
@@ -204,25 +221,16 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
               children: [
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlueSoft, 
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child: Text(
-                    data["time"]!,
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.primaryBlue,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                  decoration: BoxDecoration(color: AppColors.primaryBlueSoft, borderRadius: BorderRadius.circular(14.r)),
+                  child: Text(appointment.time, style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.w900)),
                 ),
                 SizedBox(width: 16.w),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(data["name"]!, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                      Text(data["case"]!, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
+                      Text(appointment.patientName, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      Text(appointment.caseDescription, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
                     ],
                   ),
                 ),

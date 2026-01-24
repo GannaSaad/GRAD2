@@ -82,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
         case 3: return const ProfileTab();
         default: return const ReceptionistHomeTab();
       }
-    } else if (normalizedRole == 'nurse') {
+    } else if (normalizedRole == 'assistant' || normalizedRole == 'nurse') {
       switch (_currentIndex) {
         case 0: return const NurseHomeTab();
         case 1: return const InventoryManagementTab();
@@ -136,11 +136,11 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (normalizedRole == 'receptionist') {
       return [
         const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-        const BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), activeIcon: Icon(Icons.analytics), label: 'Activity'),
+        const BottomNavigationBarItem(icon: Icon(Icons.calendar_month_outlined), activeIcon: Icon(Icons.calendar_month), label: 'Booking'),
         const BottomNavigationBarItem(icon: Icon(Icons.event_available_outlined), activeIcon: Icon(Icons.event_available), label: 'Availability'),
         const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
       ];
-    } else if (normalizedRole == 'nurse') {
+    } else if (normalizedRole == 'assistant' || normalizedRole == 'nurse') {
       return [
         const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
         const BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), activeIcon: Icon(Icons.inventory_2), label: 'Inventory'),

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:injectable/injectable.dart';
+import 'package:intl/intl.dart';
 import '../../../data/data_sources/remote/appointment_remote_data_source.dart';
 import '../../../data/models/appointment_model.dart';
+import '../../../domain/entities/availability_entity.dart';
 
 @Injectable(as: AppointmentRemoteDataSource)
 class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
@@ -63,6 +65,17 @@ class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
   }
 
   @override
+  Future<void> completeAppointment(String appointmentId) async {
+    try {
+      await _firestore.collection('appointments').doc(appointmentId).update({
+        'status': 'Completed',
+      });
+    } catch (e) {
+      throw Exception('Failed to complete appointment: ${e.toString()}');
+    }
+  }
+
+  @override
   Future<void> cancelAppointment(String appointmentId) async {
     try {
       await _firestore.collection('appointments').doc(appointmentId).update({
@@ -80,7 +93,7 @@ class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
       await _firestore.collection('appointments').doc(appointmentId).update({
         'date': Timestamp.fromDate(newDate),
         'time': newTime,
-        'status': 'Pending',
+        'status': 'Rescheduled',
       });
     } catch (e) {
       throw Exception('Failed to reschedule appointment: ${e.toString()}');
@@ -105,5 +118,40 @@ class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
     } catch (e) {
       throw Exception('Failed to fetch booked slots: ${e.toString()}');
     }
+  }
+
+  @override
+  Future<void> updateAvailability(AvailabilityEntity availability) async {
+    final dateKey = DateFormat('yyyy-MM-dd').format(availability.date);
+    try {
+      await _firestore
+          .collection('availability')
+          .doc('${availability.doctorId}_$dateKey')
+          .set({
+        'doctorId': availability.doctorId,
+        'date': Timestamp.fromDate(availability.date),
+        'availableSlots': availability.availableSlots,
+      });
+    } catch (e) {
+      throw Exception('Failed to update availability: ${e.toString()}');
+    }
+  }
+
+  @override
+  Stream<AvailabilityEntity?> getDoctorAvailability(String doctorId, DateTime date) {
+    final dateKey = DateFormat('yyyy-MM-dd').format(date);
+    return _firestore
+        .collection('availability')
+        .doc('${doctorId}_$dateKey')
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return null;
+      final data = doc.data()!;
+      return AvailabilityEntity(
+        doctorId: data['doctorId'],
+        date: (data['date'] as Timestamp).toDate(),
+        availableSlots: List<String>.from(data['availableSlots']),
+      );
+    });
   }
 }

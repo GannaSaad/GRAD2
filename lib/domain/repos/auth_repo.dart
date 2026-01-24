@@ -1,4 +1,4 @@
-import '../entities/user_entity.dart';
+import 'package:dentex_clean/domain/entities/user_entity.dart';
 
 abstract class AuthRepo {
   Future<UserEntity> register({
@@ -26,4 +26,20 @@ abstract class AuthRepo {
   Future<UserEntity> getUserData(String uid);
   Future<UserEntity> loginWithGoogle();
   Future<List<UserEntity>> getAllDoctors();
+  Future<List<UserEntity>> getAllPatients();
+  
+  Future<void> updatePatientFinancials(String uid, double totalToPay, double totalPaid);
+  
+  Future<void> updateProfile({
+    required String uid,
+    required String fullName,
+    required String phoneNumber,
+  });
+
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  Future<void> deleteUser(String uid);
 }

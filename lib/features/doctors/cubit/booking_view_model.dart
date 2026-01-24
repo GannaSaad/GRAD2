@@ -1,5 +1,5 @@
 import 'package:bloc/bloc.dart';
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../api/config/di/di.dart';
 import '../../../../domain/entities/appointment_entity.dart';
@@ -25,16 +25,14 @@ class BookedSlotsLoaded extends BookingState {
 class BookingViewModel extends Cubit<BookingState> {
   final BookAppointmentUseCase _bookAppointmentUseCase;
   final GetBookedSlotsUseCase _getBookedSlotsUseCase;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   BookingViewModel(this._bookAppointmentUseCase, this._getBookedSlotsUseCase) : super(BookingInitial());
-
-  List<String> currentBookedSlots = [];
 
   Future<void> fetchBookedSlots(String doctorId, DateTime date) async {
     emit(BookingLoading());
     try {
       final slots = await _getBookedSlotsUseCase.call(doctorId, date);
-      currentBookedSlots = slots;
       emit(BookedSlotsLoaded(slots));
     } catch (e) {
       emit(BookingFailure(e.toString()));
@@ -45,25 +43,51 @@ class BookingViewModel extends Cubit<BookingState> {
     required Doctor doctor,
     required DateTime date,
     required String time,
+    String? patientId,
+    String? patientName,
+    String? patientPhone,
+    String? caseDescription,
+    bool isReceptionistBooking = false,
   }) async {
     emit(BookingLoading());
     try {
       final user = getIt<AuthCubit>().currentUser;
       if (user == null) throw Exception("User not authenticated");
 
+      String finalPatientId = patientId ?? user.uid;
+
+      // Logic: If receptionist is booking a new walk-in, create a persistent profile and link to this doctor
+      if (isReceptionistBooking && patientId == null && patientPhone != null) {
+        finalPatientId = 'walkin_$patientPhone';
+        final doc = await _firestore.collection('users').doc(finalPatientId).get();
+        if (!doc.exists) {
+          await _firestore.collection('users').doc(finalPatientId).set({
+            'uid': finalPatientId,
+            'fullName': patientName,
+            'phoneNumber': patientPhone,
+            'role': 'patient',
+            'totalToPay': 0,
+            'totalPaid': 0,
+            'assignedDoctorId': doctor.id, // Linked to the doctor who created the staff
+            'assignedDoctorName': doctor.name,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
       final appointment = AppointmentEntity(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         doctorId: doctor.id,
-        patientId: user.uid,
+        patientId: finalPatientId,
         doctorName: doctor.name,
-        patientName: user.fullName ?? 'Patient',
+        patientName: patientName ?? user.fullName ?? 'Patient',
         date: date,
         time: time,
-        status: 'Pending',
-        caseDescription: 'Initial Consultation',
+        status: 'Confirmed',
+        caseDescription: caseDescription ?? 'Initial Consultation',
         clinicName: 'Dentix Clinic',
-        patientImage: 'assets/images/patient.jpeg',
         doctorImage: doctor.image,
+        isReceptionistBooking: isReceptionistBooking,
       );
 
       await _bookAppointmentUseCase.call(appointment);

@@ -1,25 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
-
-class PatientSupportTicket {
-  final String id;
-  final String patientName;
-  final String category;
-  final String subject;
-  final String status; // 'Pending', 'In Progress', 'Resolved'
-  final String date;
-
-  PatientSupportTicket({
-    required this.id,
-    required this.patientName,
-    required this.category,
-    required this.subject,
-    required this.status,
-    required this.date,
-  });
-}
+import '../../../domain/entities/support_ticket_entity.dart';
+import 'cubit/admin_support_view_model.dart';
 
 class PatientSupportTab extends StatefulWidget {
   const PatientSupportTab({super.key});
@@ -29,55 +16,55 @@ class PatientSupportTab extends StatefulWidget {
 }
 
 class _PatientSupportTabState extends State<PatientSupportTab> {
-  final List<PatientSupportTicket> _tickets = [
-    PatientSupportTicket(
-      id: "SUP-2001",
-      patientName: "Ahmed Mansour",
-      category: "Account",
-      subject: "Unable to update phone number in profile",
-      status: "Pending",
-      date: "24 Dec 2024",
-    ),
-    PatientSupportTicket(
-      id: "SUP-2002",
-      patientName: "Layla Farid",
-      category: "Appointment",
-      subject: "Refund request for cancelled surgery",
-      status: "In Progress",
-      date: "23 Dec 2024",
-    ),
-    PatientSupportTicket(
-      id: "SUP-2003",
-      patientName: "Yassin Kareem",
-      category: "General",
-      subject: "Question about insurance coverage for whitening",
-      status: "Resolved",
-      date: "22 Dec 2024",
-    ),
-  ];
+  late AdminSupportViewModel _viewModel;
+  final _replyController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = getIt<AdminSupportViewModel>();
+    _viewModel.fetchTickets('patient');
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text("Patient Support", style: AppTextStyles.titleLarge.copyWith(color: AppColors.primaryBlue)),
-        centerTitle: true,
-      ),
-      body: ListView.builder(
-        padding: EdgeInsets.all(20.r),
-        physics: const BouncingScrollPhysics(),
-        itemCount: _tickets.length,
-        itemBuilder: (context, index) {
-          return _buildTicketCard(_tickets[index]);
-        },
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text("Patient Support", style: AppTextStyles.titleLarge.copyWith(color: AppColors.primaryBlue)),
+          centerTitle: true,
+        ),
+        body: BlocBuilder<AdminSupportViewModel, AdminSupportState>(
+          builder: (context, state) {
+            if (state is AdminSupportLoading) return const Center(child: CircularProgressIndicator());
+            if (state is AdminSupportFailure) return Center(child: Text(state.message));
+            
+            if (state is AdminSupportSuccess) {
+              final tickets = state.tickets;
+              if (tickets.isEmpty) {
+                return Center(child: Text("No support requests from patients.", style: AppTextStyles.bodyMedium));
+              }
+              return ListView.builder(
+                padding: EdgeInsets.all(20.r),
+                physics: const BouncingScrollPhysics(),
+                itemCount: tickets.length,
+                itemBuilder: (context, index) {
+                  return _buildTicketCard(tickets[index]);
+                },
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildTicketCard(PatientSupportTicket ticket) {
+  Widget _buildTicketCard(SupportTicketEntity ticket) {
     Color statusColor;
     switch (ticket.status) {
       case 'Pending': statusColor = AppColors.warning; break;
@@ -100,28 +87,58 @@ class _PatientSupportTabState extends State<PatientSupportTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(ticket.id, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.bold)),
+              Text("ID: ${ticket.id.substring(ticket.id.length > 5 ? ticket.id.length - 5 : 0).toUpperCase()}", 
+                style: AppTextStyles.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.bold)),
               _buildStatusBadge(ticket.status, statusColor),
             ],
           ),
           SizedBox(height: 12.h),
-          Text(ticket.patientName, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
-          Text(ticket.category, style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold)),
+          Text(ticket.senderName, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
+          Text("Patient Inquiry", style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold)),
           SizedBox(height: 8.h),
-          Text(ticket.subject, style: AppTextStyles.bodyMedium),
+          Text(ticket.message, style: AppTextStyles.bodyMedium),
+          if (ticket.reply != null) ...[
+            SizedBox(height: 12.h),
+            Container(
+              padding: EdgeInsets.all(12.r),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlueSoft,
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Admin Resolution:", style: AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryBlue)),
+                  SizedBox(height: 4.h),
+                  Text(ticket.reply!, style: AppTextStyles.bodySmall),
+                ],
+              ),
+            ),
+          ],
           const Divider(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(ticket.date, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
-              ElevatedButton(
-                onPressed: () => _showRespondDialog(ticket),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                ),
-                child: Text("Review & Resolve", style: AppTextStyles.buttonSmall),
+              Text(DateFormat('dd MMM yyyy').format(ticket.createdAt), 
+                style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
+              Row(
+                children: [
+                  if (ticket.status != 'Resolved')
+                    TextButton(
+                      onPressed: () => _viewModel.markAsResolved(ticket.id),
+                      child: Text("Mark Resolved", style: TextStyle(color: AppColors.success, fontSize: 12.sp)),
+                    ),
+                  SizedBox(width: 8.w),
+                  ElevatedButton(
+                    onPressed: () => _showRespondDialog(ticket),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                    ),
+                    child: Text("Review & Resolve", style: AppTextStyles.buttonSmall.copyWith(color: Colors.white)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -134,7 +151,7 @@ class _PatientSupportTabState extends State<PatientSupportTab> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Text(
@@ -144,7 +161,8 @@ class _PatientSupportTabState extends State<PatientSupportTab> {
     );
   }
 
-  void _showRespondDialog(PatientSupportTicket ticket) {
+  void _showRespondDialog(SupportTicketEntity ticket) {
+    _replyController.text = ticket.reply ?? "";
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -157,11 +175,12 @@ class _PatientSupportTabState extends State<PatientSupportTab> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Resolving Issue ${ticket.id}", style: AppTextStyles.titleLarge),
+              Text("Resolving Patient Issue", style: AppTextStyles.titleLarge),
               SizedBox(height: 8.h),
-              Text("Patient: ${ticket.patientName}", style: AppTextStyles.bodySmall),
+              Text("From: ${ticket.senderName}", style: AppTextStyles.bodySmall),
               SizedBox(height: 24.h),
               TextField(
+                controller: _replyController,
                 maxLines: 5,
                 decoration: InputDecoration(
                   hintText: "Type response to patient...",
@@ -187,11 +206,15 @@ class _PatientSupportTabState extends State<PatientSupportTab> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Resolution sent to patient.")));
+                        if (_replyController.text.isNotEmpty) {
+                          _viewModel.respondToTicket(ticket.id, _replyController.text);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Resolution sent successfully!"), backgroundColor: Colors.green));
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: AppColors.primaryGoldLight,
                         padding: EdgeInsets.symmetric(vertical: 16.h),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                       ),
@@ -206,5 +229,11 @@ class _PatientSupportTabState extends State<PatientSupportTab> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
   }
 }

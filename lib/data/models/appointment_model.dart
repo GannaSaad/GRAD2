@@ -14,6 +14,7 @@ class AppointmentModel {
   final String clinicName;
   final String? patientImage;
   final String? doctorImage;
+  final bool isReceptionistBooking;
 
   AppointmentModel({
     required this.id,
@@ -28,6 +29,7 @@ class AppointmentModel {
     required this.clinicName,
     this.patientImage,
     this.doctorImage,
+    this.isReceptionistBooking = false,
   });
 
   factory AppointmentModel.fromFirestore(Map<String, dynamic> json, String id) {
@@ -44,6 +46,7 @@ class AppointmentModel {
       clinicName: json['clinicName'] ?? '',
       patientImage: json['patientImage'],
       doctorImage: json['doctorImage'],
+      isReceptionistBooking: json['isReceptionistBooking'] ?? false,
     );
   }
 
@@ -60,6 +63,7 @@ class AppointmentModel {
       'clinicName': clinicName,
       'patientImage': patientImage,
       'doctorImage': doctorImage,
+      'isReceptionistBooking': isReceptionistBooking,
     };
   }
 
@@ -77,6 +81,7 @@ class AppointmentModel {
       clinicName: clinicName,
       patientImage: patientImage,
       doctorImage: doctorImage,
+      isReceptionistBooking: isReceptionistBooking,
     );
   }
 
@@ -94,6 +99,7 @@ class AppointmentModel {
       clinicName: entity.clinicName,
       patientImage: entity.patientImage,
       doctorImage: entity.doctorImage,
+      isReceptionistBooking: entity.isReceptionistBooking,
     );
   }
 }

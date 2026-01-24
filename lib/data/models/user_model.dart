@@ -20,6 +20,12 @@ class UserModel {
   // Patient specific
   final String? allergies;
   final String? medicalInsurance;
+  final double? totalToPay;
+  final double? totalPaid;
+
+  // Staff specific
+  final String? assignedDoctorId;
+  final String? assignedDoctorName;
 
   UserModel({
     required this.id,
@@ -36,6 +42,10 @@ class UserModel {
     this.certificates,
     this.allergies,
     this.medicalInsurance,
+    this.totalToPay,
+    this.totalPaid,
+    this.assignedDoctorId,
+    this.assignedDoctorName,
   });
 
   factory UserModel.fromFirebaseUser(
@@ -52,6 +62,10 @@ class UserModel {
         String? certificates,
         String? allergies,
         String? medicalInsurance,
+        String? assignedDoctorId,
+        String? assignedDoctorName,
+        double? totalToPay,
+        double? totalPaid,
       }) {
     return UserModel(
       id: user.uid,
@@ -68,6 +82,10 @@ class UserModel {
       certificates: certificates,
       allergies: allergies,
       medicalInsurance: medicalInsurance,
+      assignedDoctorId: assignedDoctorId,
+      assignedDoctorName: assignedDoctorName,
+      totalToPay: totalToPay,
+      totalPaid: totalPaid,
     );
   }
 
@@ -87,6 +105,10 @@ class UserModel {
       certificates: certificates,
       allergies: allergies,
       medicalInsurance: medicalInsurance,
+      assignedDoctorId: assignedDoctorId,
+      assignedDoctorName: assignedDoctorName,
+      totalToPay: totalToPay,
+      totalPaid: totalPaid,
     );
   }
 }

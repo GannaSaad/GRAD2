@@ -8,57 +8,75 @@ import '../../../core/core/utils/cubit/theme_cubit.dart';
 import '../../auth/auth_cubit/auth_cubit.dart';
 import '../../auth/auth_cubit/auth_states.dart';
 import '../../../api/config/di/di.dart';
+import 'cubit/support_view_model.dart';
 
-class ProfileTab extends StatelessWidget {
+class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
+
+  @override
+  State<ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<ProfileTab> {
+  final SupportViewModel _supportViewModel = getIt<SupportViewModel>();
+  final _supportMessageController = TextEditingController();
+
+  @override
+  void dispose() {
+    _supportMessageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final authCubit = getIt<AuthCubit>();
     final currentUser = authCubit.currentUser;
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
-          onPressed: () {
-            // Optional: Handle back navigation
-          },
-        ),
-        title: Text("My Profile", style: AppTextStyles.bold18White.copyWith(color: AppColors.primaryColor)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          BlocBuilder<ThemeCubit, ThemeMode>(
-            builder: (context, state) {
-              return IconButton(
-                icon: Icon(
-                  state == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
-                  color: AppColors.primaryColor,
-                ),
-                onPressed: () => context.read<ThemeCubit>().toggleTheme(),
-              );
+    return BlocProvider(
+      create: (context) => _supportViewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
+            onPressed: () {
+              // Optional: Handle back navigation
             },
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-        child: Column(
-          children: [
-            SizedBox(height: 20.h),
-            _buildProfileAvatar(currentUser),
-            SizedBox(height: 16.h),
-            Text(
-              currentUser?.fullName ?? "User Name",
-              style: AppTextStyles.headlineSmall.copyWith(fontWeight: FontWeight.bold),
+          title: Text("My Profile", style: AppTextStyles.bold18White.copyWith(color: AppColors.primaryColor)),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            BlocBuilder<ThemeCubit, ThemeMode>(
+              builder: (context, state) {
+                return IconButton(
+                  icon: Icon(
+                    state == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
+                    color: AppColors.primaryColor,
+                  ),
+                  onPressed: () => context.read<ThemeCubit>().toggleTheme(),
+                );
+              },
             ),
-            SizedBox(height: 30.h),
-            _buildMenuSection(context, currentUser),
           ],
+        ),
+        body: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+          child: Column(
+            children: [
+              SizedBox(height: 20.h),
+              _buildProfileAvatar(currentUser),
+              SizedBox(height: 16.h),
+              Text(
+                currentUser?.fullName ?? "User Name",
+                style: AppTextStyles.headlineSmall.copyWith(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 30.h),
+              _buildMenuSection(context, currentUser),
+            ],
+          ),
         ),
       ),
     );
@@ -105,11 +123,8 @@ class ProfileTab extends StatelessWidget {
             icon: Icons.person_outline,
             label: "Profile",
             onTap: () {
-              if (isAdmin) {
-                _showReadOnlyProfileDialog(context, user);
-              } else {
-                Navigator.pushNamed(context, AppRoutes.profileEditing);
-              }
+              // Admin can now edit their profile like everyone else
+              Navigator.pushNamed(context, AppRoutes.profileEditing);
             },
           ),
           const Divider(height: 1),
@@ -138,18 +153,16 @@ class ProfileTab extends StatelessWidget {
               Navigator.pushNamed(context, AppRoutes.settings);
             },
           ),
-          const Divider(height: 1),
-          _buildMenuItem(
-            icon: Icons.help_outline,
-            label: "Help",
-            onTap: () {
-              if (isAdmin) {
-                // Admin doesn't need help to text themselves
-              } else {
+          if (!isAdmin) ...[
+            const Divider(height: 1),
+            _buildMenuItem(
+              icon: Icons.help_outline,
+              label: "Help",
+              onTap: () {
                 _showSupportChat(context);
-              }
-            },
-          ),
+              },
+            ),
+          ],
           const Divider(height: 1),
           _buildMenuItem(
             icon: Icons.logout,
@@ -193,99 +206,90 @@ class ProfileTab extends StatelessWidget {
     );
   }
 
-  void _showReadOnlyProfileDialog(BuildContext context, dynamic user) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-        title: const Text("Admin Profile (Read-Only)"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildReadOnlyField("Full Name", user?.fullName ?? "N/A"),
-            _buildReadOnlyField("Email", user?.email ?? "N/A"),
-            _buildReadOnlyField("Role", user?.role ?? "Admin"),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReadOnlyField(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
-          Text(value, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
   void _showSupportChat(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30.r))),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          padding: EdgeInsets.all(24.r),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.support_agent, color: AppColors.primaryBlue),
-                  SizedBox(width: 12.w),
-                  Text("IT Support", style: AppTextStyles.titleLarge),
-                ],
-              ),
-              SizedBox(height: 8.h),
-              Text("Describe your problem to the Admin", style: AppTextStyles.bodySmall),
-              SizedBox(height: 24.h),
-              TextField(
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: "Message the IT team...",
-                  filled: true,
-                  fillColor: AppColors.backgroundPrimary,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16.r),
-                    borderSide: BorderSide.none,
-                  ),
+      builder: (context) => BlocListener<SupportViewModel, SupportState>(
+        bloc: _supportViewModel,
+        listener: (context, state) {
+          if (state is SupportSuccess) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Ticket sent successfully!"), backgroundColor: Colors.green),
+            );
+            _supportMessageController.clear();
+          } else if (state is SupportFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            );
+          }
+        },
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: EdgeInsets.all(24.r),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.support_agent, color: AppColors.primaryBlue),
+                    SizedBox(width: 12.w),
+                    Text("IT Support", style: AppTextStyles.titleLarge),
+                  ],
                 ),
-              ),
-              SizedBox(height: 24.h),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Ticket sent successfully.")),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        padding: EdgeInsets.symmetric(vertical: 16.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                      ),
-                      child: const Text("Send Message"),
+                SizedBox(height: 8.h),
+                Text("Describe your problem to the Admin", style: AppTextStyles.bodySmall),
+                SizedBox(height: 24.h),
+                TextField(
+                  controller: _supportMessageController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: "Message the IT team...",
+                    filled: true,
+                    fillColor: AppColors.backgroundPrimary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                      borderSide: BorderSide.none,
                     ),
                   ),
-                ],
-              ),
-              SizedBox(height: 20.h),
-            ],
+                ),
+                SizedBox(height: 24.h),
+                BlocBuilder<SupportViewModel, SupportState>(
+                  bloc: _supportViewModel,
+                  builder: (context, state) {
+                    final isLoading = state is SupportLoading;
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: isLoading ? null : () {
+                              if (_supportMessageController.text.isNotEmpty) {
+                                _supportViewModel.sendTicket(_supportMessageController.text);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
+                              foregroundColor: AppColors.primaryGoldLight,
+                              padding: EdgeInsets.symmetric(vertical: 16.h),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                            ),
+                            child: Text(
+                              isLoading ? "Sending..." : "Send Message",
+                              style: AppTextStyles.buttonMedium.copyWith(color: AppColors.primaryGoldLight),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                SizedBox(height: 20.h),
+              ],
+            ),
           ),
         ),
       ),

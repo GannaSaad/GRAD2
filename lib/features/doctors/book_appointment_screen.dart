@@ -7,6 +7,8 @@ import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../widgets/widgets/custom_elevated_button.dart';
+import '../../domain/entities/availability_entity.dart';
+import '../../domain/repos/appointment_repo.dart';
 import 'cubit/booking_view_model.dart';
 import 'doctors_listing_screen.dart';
 
@@ -25,17 +27,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   String? _selectedTime;
   final BookingViewModel _viewModel = getIt<BookingViewModel>();
 
-  final List<String> _allTimeSlots = [
-    "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM",
-    "11:00 AM", "11:30 AM", "01:00 PM", "01:30 PM",
-    "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM"
-  ];
-
   @override
   void initState() {
     super.initState();
-    // Initial fetch for today if needed
-    _viewModel.fetchBookedSlots(widget.doctor.id, DateTime.now());
+    //
+    // Normalize today's date
+    final now = DateTime.now();
+    _selectedDay = DateTime(now.year, now.month, now.day);
+    _viewModel.fetchBookedSlots(widget.doctor.id, _selectedDay!);
   }
 
   @override
@@ -114,59 +113,76 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Widget _buildDynamicTimeSlotsGrid() {
-    return BlocBuilder<BookingViewModel, BookingState>(
-      builder: (context, state) {
-        if (state is BookingLoading) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
-        }
+    return StreamBuilder<AvailabilityEntity?>(
+      stream: getIt<AppointmentRepo>().getDoctorAvailability(widget.doctor.id, _selectedDay!),
+      builder: (context, availabilitySnapshot) {
+        return BlocBuilder<BookingViewModel, BookingState>(
+          builder: (context, state) {
+            if (state is BookingLoading || availabilitySnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
+            }
 
-        List<String> bookedSlots = [];
-        if (state is BookedSlotsLoaded) {
-          bookedSlots = state.bookedSlots;
-        }
+            final List<String> liveSlots = availabilitySnapshot.data?.availableSlots ?? [];
+            
+            List<String> bookedSlots = [];
+            if (state is BookedSlotsLoaded) {
+              bookedSlots = state.bookedSlots;
+            }
 
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24.w),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 12.h,
-              crossAxisSpacing: 12.w,
-              childAspectRatio: 2.2,
-            ),
-            itemCount: _allTimeSlots.length,
-            itemBuilder: (context, index) {
-              final time = _allTimeSlots[index];
-              final isBooked = bookedSlots.contains(time);
-              final isSelected = _selectedTime == time;
+            // PATIENT ONLY SEES: Live slots that aren't booked
+            final filteredSlots = liveSlots.where((slot) => !bookedSlots.contains(slot)).toList();
 
-              return GestureDetector(
-                onTap: isBooked ? null : () {
-                  setState(() {
-                    _selectedTime = time;
-                  });
-                },
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primaryBlue : (isBooked ? AppColors.backgroundPrimary.withOpacity(0.5) : AppColors.cardBackground),
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: isSelected ? AppColors.primaryBlue : AppColors.borderSoft, width: 1.5),
-                  ),
-                  child: Text(
-                    time,
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: isSelected ? Colors.white : (isBooked ? AppColors.textTertiary.withOpacity(0.5) : AppColors.textPrimary),
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      decoration: isBooked ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
+            if (filteredSlots.isEmpty) {
+              return Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.r),
+                  child: Text("No available slots for this date.", style: AppTextStyles.bodyMedium),
                 ),
               );
-            },
-          ),
+            }
+
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 12.h,
+                  crossAxisSpacing: 12.w,
+                  childAspectRatio: 2.2,
+                ),
+                itemCount: filteredSlots.length,
+                itemBuilder: (context, index) {
+                  final time = filteredSlots[index];
+                  final isSelected = _selectedTime == time;
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedTime = time;
+                      });
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primaryBlue : AppColors.cardBackground,
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: isSelected ? AppColors.primaryBlue : AppColors.borderSoft, width: 1.5),
+                      ),
+                      child: Text(
+                        time,
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
         );
       },
     );
@@ -179,7 +195,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       decoration: BoxDecoration(
         color: AppColors.whiteColor,
         borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32.r), bottomRight: Radius.circular(32.r)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.blackColor.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +236,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [BoxShadow(color: AppColors.shadowColor, blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: AppColors.blackColor.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         children: [
@@ -304,7 +320,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               onTap: isPast ? null : () {
                 setState(() {
                   _selectedDay = date;
-                  _selectedTime = null; // Reset time when date changes
+                  _selectedTime = null;
                 });
                 _viewModel.fetchBookedSlots(widget.doctor.id, date);
               },
@@ -335,7 +351,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     return Container(
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
-        color: AppColors.primaryBlueSoft.withOpacity(0.3),
+        color: AppColors.primaryBlueSoft.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(20.r),
         border: Border.all(color: AppColors.primaryBlueSoft),
       ),

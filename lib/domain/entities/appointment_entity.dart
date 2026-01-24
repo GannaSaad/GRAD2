@@ -13,6 +13,7 @@ class AppointmentEntity extends Equatable {
   final String clinicName;
   final String? patientImage;
   final String? doctorImage;
+  final bool isReceptionistBooking;
 
   const AppointmentEntity({
     required this.id,
@@ -27,6 +28,7 @@ class AppointmentEntity extends Equatable {
     required this.clinicName,
     this.patientImage,
     this.doctorImage,
+    this.isReceptionistBooking = false,
   });
 
   @override
@@ -41,5 +43,6 @@ class AppointmentEntity extends Equatable {
         status,
         caseDescription,
         clinicName,
+        isReceptionistBooking,
       ];
 }

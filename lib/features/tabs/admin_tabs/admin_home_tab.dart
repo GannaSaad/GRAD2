@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
-import '../patients_tab/patients_tab.dart';
+import '../../../domain/entities/user_entity.dart';
+import 'cubit/admin_home_view_model.dart';
 
 class AdminHomeTab extends StatefulWidget {
   const AdminHomeTab({super.key});
@@ -13,65 +16,70 @@ class AdminHomeTab extends StatefulWidget {
 }
 
 class _AdminHomeTabState extends State<AdminHomeTab> {
+  late AdminHomeViewModel _viewModel;
   String searchQuery = '';
   String selectedFilter = 'All';
 
-  final List<Map<String, dynamic>> _doctors = [
-    {
-      "name": "Dr. Hazem EL Beltagy",
-      "field": "Implantology",
-      "location": "Cairo",
-      "patients": 124,
-      "image": "assets/images/doctor.jpg"
-    },
-    {
-      "name": "Dr. Mohamed Hmady",
-      "field": "Dermatology",
-      "location": "Maadi",
-      "patients": 89,
-      "image": "assets/images/doctor1.png"
-    },
-    {
-      "name": "Dr. Samia Abu Zeed",
-      "field": "Endocrinology",
-      "location": "Zamalek",
-      "patients": 156,
-      "image": "assets/images/doctor3.png"
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = getIt<AdminHomeViewModel>();
+    _viewModel.getAllDoctors();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text("Admin Dashboard", style: AppTextStyles.titleLarge.copyWith(color: AppColors.primaryBlue)),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1_outlined, color: AppColors.primaryBlue),
-            onPressed: () {
-              // Add Doctor Logic
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildSearchAndFilter(),
-          Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-              physics: const BouncingScrollPhysics(),
-              itemCount: _doctors.length,
-              itemBuilder: (context, index) {
-                return _buildAdminDoctorCard(_doctors[index]);
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text("Admin Dashboard", style: AppTextStyles.titleLarge.copyWith(color: AppColors.primaryBlue)),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.person_add_alt_1_outlined, color: AppColors.primaryBlue),
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.addDoctor);
               },
             ),
-          ),
-        ],
+          ],
+        ),
+        body: Column(
+          children: [
+            _buildSearchAndFilter(),
+            Expanded(
+              child: BlocBuilder<AdminHomeViewModel, AdminHomeState>(
+                builder: (context, state) {
+                  if (state is AdminHomeLoading) return const Center(child: CircularProgressIndicator());
+                  if (state is AdminHomeFailure) return Center(child: Text(state.message));
+                  
+                  List<UserEntity> doctors = [];
+                  if (state is AdminHomeSuccess) {
+                    doctors = state.doctors.where((doc) {
+                      bool matchesSearch = doc.fullName?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false;
+                      bool matchesFilter = selectedFilter == 'All' || (doc.speciality?.toLowerCase() == selectedFilter.toLowerCase());
+                      return matchesSearch && matchesFilter;
+                    }).toList();
+                  }
+
+                  if (doctors.isEmpty) {
+                    return Center(child: Text("No doctors found matching criteria", style: AppTextStyles.bodyMedium));
+                  }
+
+                  return ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: doctors.length,
+                    itemBuilder: (context, index) => _buildAdminDoctorCard(doctors[index]),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -88,10 +96,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
               prefixIcon: const Icon(Icons.search, color: AppColors.primaryBlue),
               filled: true,
               fillColor: AppColors.cardBackground,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.r),
-                borderSide: BorderSide.none,
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16.r), borderSide: BorderSide.none),
             ),
           ),
           SizedBox(height: 12.h),
@@ -106,16 +111,10 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                     margin: EdgeInsets.only(right: 8.w),
                     padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primaryBlue : AppColors.primaryBlueLight,
+                      color: isSelected ? AppColors.primaryBlue : AppColors.primaryBlueSoft,
                       borderRadius: BorderRadius.circular(20.r),
                     ),
-                    child: Text(
-                      filter,
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: isSelected ? Colors.white : AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: Text(filter, style: AppTextStyles.labelSmall.copyWith(color: isSelected ? Colors.white : AppColors.primaryBlue, fontWeight: FontWeight.bold)),
                   ),
                 );
               }).toList(),
@@ -126,7 +125,9 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
     );
   }
 
-  Widget _buildAdminDoctorCard(Map<String, dynamic> doctor) {
+  Widget _buildAdminDoctorCard(UserEntity doctor) {
+    final String initials = (doctor.fullName ?? "?").trim().split(' ').map((l) => l[0]).take(2).join().toUpperCase();
+
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.r),
@@ -141,17 +142,18 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
             children: [
               CircleAvatar(
                 radius: 30.r,
-                backgroundImage: AssetImage(doctor["image"]),
+                backgroundColor: AppColors.primaryBlueSoft,
+                child: Text(initials, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryBlue)),
               ),
               SizedBox(width: 16.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(doctor["name"], style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
-                    Text("${doctor["field"]} • ${doctor["location"]}", style: AppTextStyles.bodySmall),
+                    Text(doctor.fullName ?? "Unnamed", style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+                    Text("${doctor.speciality ?? 'Specialist'} • Cairo", style: AppTextStyles.bodySmall),
                     SizedBox(height: 4.h),
-                    Text("${doctor["patients"]} Total Patients", style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryBlue)),
+                    Text("Staff Sync Enabled", style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryBlue)),
                   ],
                 ),
               ),
@@ -163,7 +165,13 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, AppRoutes.adminDoctorDetail, arguments: doctor);
+                    Navigator.pushNamed(context, AppRoutes.adminDoctorDetail, arguments: {
+                      'name': doctor.fullName ?? 'Unknown Doctor',
+                      'field': doctor.speciality ?? 'General Dentist',
+                      'location': 'Maadi, Cairo',
+                      'patients': '0',
+                      'image': 'assets/images/doctor.jpg'
+                    });
                   },
                   style: OutlinedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 12.h),
@@ -176,7 +184,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
               SizedBox(width: 12.w),
               IconButton(
                 onPressed: () {
-                  // Delete Logic
+                  _showDeleteConfirm(context, doctor.fullName ?? "this doctor", doctor.uid);
                 },
                 icon: Container(
                   padding: EdgeInsets.all(8.r),
@@ -185,6 +193,29 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirm(BuildContext context, String name, String uid) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Doctor"),
+        content: Text("Are you sure you want to remove Dr. $name from the clinic system? This cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () {
+              _viewModel.deleteDoctor(uid);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Doctor record deleted."), backgroundColor: Colors.red),
+              );
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

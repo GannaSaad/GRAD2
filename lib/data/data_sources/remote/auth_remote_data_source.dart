@@ -1,4 +1,4 @@
-import '../../models/user_model.dart';
+import 'package:dentex_clean/data/models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
   Future<UserModel> login({required String email, required String password});
@@ -21,4 +21,20 @@ abstract class AuthRemoteDataSource {
   Future<UserModel> getUserData(String uid);
   Future<UserModel> loginWithGoogle();
   Future<List<UserModel>> getAllDoctors();
+  Future<List<UserModel>> getAllPatients(); // Added this line
+  Stream<List<UserModel>> getDoctorsStream();
+  Future<void> updatePatientFinancials(String uid, double totalToPay, double totalPaid);
+  
+  Future<void> updateProfile({
+    required String uid,
+    required String fullName,
+    required String phoneNumber,
+  });
+
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  Future<void> deleteUser(String uid);
 }

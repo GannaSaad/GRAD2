@@ -307,6 +307,9 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
   }
 
   Widget _buildAppointmentCard(AppointmentEntity appointment) {
+    final bool hasRealPhoto = appointment.patientImage != null && 
+                             appointment.patientImage!.startsWith('http');
+
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.r),
@@ -323,10 +326,7 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 25.r,
-            backgroundImage: AssetImage(appointment.patientImage ?? 'assets/images/patient.jpeg'),
-          ),
+          _buildAvatar(appointment, hasRealPhoto),
           SizedBox(width: 16.w),
           Expanded(
             child: Column(
@@ -351,5 +351,30 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
         ],
       ),
     );
+  }
+
+  Widget _buildAvatar(AppointmentEntity appointment, bool hasRealPhoto) {
+    if (hasRealPhoto) {
+      return CircleAvatar(
+        radius: 25.r,
+        backgroundImage: NetworkImage(appointment.patientImage!),
+      );
+    } else {
+      final String initials = appointment.patientName.isNotEmpty 
+          ? appointment.patientName.trim().split(' ').map((l) => l[0]).take(2).join().toUpperCase()
+          : "?";
+          
+      return CircleAvatar(
+        radius: 25.r,
+        backgroundColor: AppColors.primaryBlueSoft,
+        child: Text(
+          initials,
+          style: AppTextStyles.titleSmall.copyWith(
+            color: AppColors.primaryBlue,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
   }
 }

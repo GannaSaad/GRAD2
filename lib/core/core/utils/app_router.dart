@@ -19,6 +19,7 @@ import '../../../features/tabs/nurse_tabs/nurse_patient_details_screen.dart';
 import '../../../features/tabs/admin_tabs/admin_doctor_detail_screen.dart';
 import '../../../features/onboarding/onboarding_screen.dart';
 import '../../../features/tabs/receptionist_tabs/receptionist_patient_details_screen.dart';
+import '../../../features/tabs/admin_tabs/add_doctor_screen.dart'; // Added this line
 import '../../../widgets/widgets/auth_gate.dart';
 import 'app_routes.dart';
 
@@ -32,7 +33,6 @@ class AppRouter {
       case AppRoutes.register:
         return MaterialPageRoute(builder: (_) => RegisterScreen());
       case AppRoutes.homeScreen:
-        // homeScreen now points to AuthGate to handle role-based navigation and email verification
         return MaterialPageRoute(builder: (_) => const AuthGate());
       case AppRoutes.doctorsListing:
         return MaterialPageRoute(builder: (_) => const DoctorsListingScreen());
@@ -75,13 +75,16 @@ class AppRouter {
         final doctor = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(builder: (_) => AdminDoctorDetailScreen(doctor: doctor));
       case AppRoutes.receptionistPatientDetails:
-        final args = settings.arguments as Map<String, String>;
+        final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(builder: (_) => ReceptionistPatientDetailsScreen(
           patientName: args['name']!, 
           patientImage: args['image']!,
           treatment: args['case']!,
           time: args['time']!,
+          patientId: args['patientId'],
         ));
+      case AppRoutes.addDoctor: // Added this line
+        return MaterialPageRoute(builder: (_) => const AddDoctorScreen());
       default:
         return MaterialPageRoute(builder: (_) => LoginScreen());
     }

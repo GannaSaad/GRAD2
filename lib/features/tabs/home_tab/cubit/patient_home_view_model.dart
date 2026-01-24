@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../domain/entities/appointment_entity.dart';
+import '../../../../domain/entities/user_entity.dart';
 import '../../../../domain/use_cases/get_patient_appointments_use_case.dart';
 import '../../../auth/auth_cubit/auth_cubit.dart';
 import '../../../../api/config/di/di.dart';
@@ -11,8 +12,9 @@ class PatientHomeInitial extends PatientHomeState {}
 class PatientHomeLoading extends PatientHomeState {}
 class PatientHomeSuccess extends PatientHomeState {
   final List<AppointmentEntity> appointments;
+  final UserEntity user;
   final String greeting;
-  PatientHomeSuccess(this.appointments, this.greeting);
+  PatientHomeSuccess(this.appointments, this.user, this.greeting);
 }
 class PatientHomeFailure extends PatientHomeState {
   final String message;
@@ -44,7 +46,7 @@ class PatientHomeViewModel extends Cubit<PatientHomeState> {
     _appointmentsSubscription = _getPatientAppointmentsUseCase.call(user.uid).listen(
       (appointments) {
         if (!isClosed) {
-          emit(PatientHomeSuccess(appointments, getGreeting()));
+          emit(PatientHomeSuccess(appointments, user, getGreeting()));
         }
       },
       onError: (error) {

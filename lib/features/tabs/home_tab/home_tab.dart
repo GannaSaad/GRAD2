@@ -80,13 +80,23 @@ class _PatientHomeTabState extends State<PatientHomeTab> {
 
                 Text("Quick Health Snapshot", style: AppTextStyles.titleLarge),
                 SizedBox(height: 16.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildSnapshotCard(Icons.warning_amber_rounded, "Allergies", "None", Colors.orange),
-                    _buildSnapshotCard(Icons.shield_outlined, "Insurance", "Active", Colors.blue),
-                    _buildSnapshotCard(Icons.history, "History", "Updated", Colors.green),
-                  ],
+                BlocBuilder<PatientHomeViewModel, PatientHomeState>(
+                  builder: (context, state) {
+                    String allergyText = "None";
+                    if (state is PatientHomeSuccess) {
+                      allergyText = (state.user.allergies != null && state.user.allergies!.isNotEmpty)
+                          ? state.user.allergies!
+                          : "None";
+                    }
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSnapshotCard(Icons.warning_amber_rounded, "Allergies", allergyText, Colors.orange),
+                        _buildSnapshotCard(Icons.shield_outlined, "Insurance", "Active", Colors.blue),
+                        _buildSnapshotCard(Icons.history, "History", "Updated", Colors.green),
+                      ],
+                    );
+                  },
                 ),
                 SizedBox(height: 30.h),
 
@@ -255,7 +265,12 @@ class _PatientHomeTabState extends State<PatientHomeTab> {
           SizedBox(height: 8.h),
           Text(label, style: AppTextStyles.labelSmall),
           SizedBox(height: 4.h),
-          Text(value, style: AppTextStyles.titleSmall.copyWith(color: AppColors.textPrimary)),
+          Text(
+            value, 
+            style: AppTextStyles.titleSmall.copyWith(color: AppColors.textPrimary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );
