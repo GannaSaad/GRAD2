@@ -1,1 +1,25 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"dentex-clean","appId":"1:40233588836:android:7bab36c289361deeac6771","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"dentex-clean","configurations":{"android":"1:40233588836:android:7bab36c289361deeac6771","ios":"1:40233588836:ios:3fbf476fb04b2930ac6771","macos":"1:40233588836:ios:3fbf476fb04b2930ac6771","web":"1:40233588836:web:0b0b382806d77916ac6771","windows":"1:40233588836:web:5ef21b98776ef36aac6771"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dentex-clean",
+          "appId": "1:40233588836:android:7bab36c289361deeac6771",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dentex-clean",
+          "configurations": {
+            "android": "1:40233588836:android:7bab36c289361deeac6771",
+            "ios": "1:40233588836:ios:3fbf476fb04b2930ac6771",
+            "macos": "1:40233588836:ios:3fbf476fb04b2930ac6771",
+            "web": "1:40233588836:web:0b0b382806d77916ac6771",
+            "windows": "1:40233588836:web:5ef21b98776ef36aac6771"
+          }
+        }
+      }
+    }
+  }
+}

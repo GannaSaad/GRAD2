@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../domain/entities/appointment_entity.dart';
@@ -20,6 +21,7 @@ class DoctorHomeFailure extends DoctorHomeState {
 @injectable
 class DoctorHomeViewModel extends Cubit<DoctorHomeState> {
   final GetDoctorAppointmentsUseCase _getDoctorAppointmentsUseCase;
+  StreamSubscription? _subscription; // 1. Create a subscription variable
 
   DoctorHomeViewModel(this._getDoctorAppointmentsUseCase) : super(DoctorHomeInitial());
 
@@ -31,13 +33,28 @@ class DoctorHomeViewModel extends Cubit<DoctorHomeState> {
       return;
     }
 
-    _getDoctorAppointmentsUseCase.call(user.uid).listen(
+    // 2. Cancel any existing subscription before starting a new one
+    _subscription?.cancel();
+    
+    // 3. Store the new subscription
+    _subscription = _getDoctorAppointmentsUseCase.call(user.uid).listen(
       (appointments) {
-        emit(DoctorHomeSuccess(appointments));
+        if (!isClosed) { // 4. Check if Cubit is still open
+          emit(DoctorHomeSuccess(appointments));
+        }
       },
       onError: (error) {
-        emit(DoctorHomeFailure(error.toString()));
+        if (!isClosed) {
+          emit(DoctorHomeFailure(error.toString()));
+        }
       },
     );
+  }
+
+  @override
+  Future<void> close() {
+    // 5. Cleanup: Cancel the subscription when the Cubit is closed
+    _subscription?.cancel();
+    return super.close();
   }
 }

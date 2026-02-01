@@ -121,7 +121,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                         ),
                         padding: EdgeInsets.all(20.r),
                         child: Image.asset(
-                          AppImages.onboarding,
+                          "assets/images/dentexLogo.png",
                           fit: BoxFit.contain,
                           // Error handling if asset is missing or corrupted
                           errorBuilder: (context, error, stackTrace) {

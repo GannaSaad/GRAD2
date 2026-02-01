@@ -78,11 +78,17 @@ class Doctor {
       imagePath = maleImages[index % maleImages.length];
     }
     
+    // UPDATED SPECIALTY DEFAULT
+    String specialty = entity.speciality ?? "Oral Surgery & Implantology";
+    if (specialty.toLowerCase() == "dermatology") {
+      specialty = "Oral Surgery & Implantology";
+    }
+
     return Doctor(
       id: entity.uid,
       name: name,
       rank: ranks[index % ranks.length],
-      specialty: entity.speciality ?? "General Dentist",
+      specialty: specialty,
       bio: "Senior dental specialist dedicated to providing elite clinical care at Dentix.",
       image: imagePath,
       experience: "${10 + (index % 10)} years",

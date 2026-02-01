@@ -66,6 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      SizedBox(height: 10.h),
                       CustomTextFormField(
                         hintText: "Enter your Email or Phone",
                         prefixIcon: Icon(Icons.email_outlined, color: AppColors.grayColor),

@@ -13,6 +13,12 @@ class DoctorProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ensure specialty is synced if it was old data
+    String displaySpecialty = doctor.specialty;
+    if (displaySpecialty.toLowerCase() == "dermatology") {
+      displaySpecialty = "Oral Surgery & Implantology";
+    }
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: SafeArea(
@@ -27,7 +33,7 @@ class DoctorProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildNameSection(),
+                    _buildNameSection(displaySpecialty),
                     SizedBox(height: 24.h),
                     _buildMetricsGrid(),
                     SizedBox(height: 30.h),
@@ -92,7 +98,7 @@ class DoctorProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNameSection() {
+  Widget _buildNameSection(String specialty) {
     return Center(
       child: Column(
         children: [
@@ -100,7 +106,7 @@ class DoctorProfileScreen extends StatelessWidget {
           SizedBox(height: 4.h),
           Text(doctor.rank, style: AppTextStyles.titleMedium.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold)),
           SizedBox(height: 4.h),
-          Text(doctor.specialty, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
+          Text(specialty, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
         ],
       ),
     );

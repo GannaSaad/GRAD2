@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,6 +10,7 @@ import '../tabs/home_tab/home_tab.dart';
 import '../tabs/profile_tab/profile_tab.dart';
 import '../doctors/doctors_listing_screen.dart';
 import '../auth/auth_cubit/auth_cubit.dart';
+import '../auth/auth_cubit/auth_states.dart';
 import '../tabs/doctor_home_tab/doctor_home_tab.dart';
 import '../tabs/patients_tab/patients_tab.dart';
 import '../tabs/availability_tab/availability_tab.dart';
@@ -34,6 +34,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   bool _showDoctorsListing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final authCubit = getIt<AuthCubit>();
+    if (authCubit.currentUser == null) {
+      authCubit.loadUserData();
+    }
+  }
 
   void _onTabTapped(int index) {
     setState(() {
@@ -95,7 +104,6 @@ class _HomeScreenState extends State<HomeScreen> {
         case 0: return const DoctorHomeTab();
         case 1: return const PatientsTab();
         case 2: return const AvailabilityTab();
-        case 3: return const ChatBotTab(); 
         case 4: return const ProfileTab();
         default: return const DoctorHomeTab();
       }
@@ -182,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
-            color: isActive ? AppColors.primaryColor : Colors.transparent,
+            color: isActive ? AppColors.primaryBlue : Colors.transparent,
             width: 1.5,
           ),
         ),
@@ -198,20 +206,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authCubit = getIt<AuthCubit>();
-    final role = authCubit.currentUser?.role ?? 'patient';
+    return BlocBuilder<AuthCubit, AuthState>(
+      bloc: getIt<AuthCubit>(),
+      builder: (context, state) {
+        final authCubit = getIt<AuthCubit>();
+        final user = authCubit.currentUser;
 
-    return Scaffold(
-      body: _getBody(role),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primaryColor,
-        unselectedItemColor: AppColors.grayColor,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        items: _getNavItems(role),
-      ),
+        if (user == null) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final role = user.role ?? 'patient';
+        return Scaffold(
+          body: _getBody(role),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: _onTabTapped,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: AppColors.primaryBlue,
+            unselectedItemColor: AppColors.grayColor,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            items: _getNavItems(role),
+          ),
+        );
+      },
     );
   }
 }

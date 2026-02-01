@@ -63,7 +63,7 @@ class _PatientHomeTabState extends State<PatientHomeTab> {
                 _buildActionCard(
                   onTap: widget.onAssistantTap,
                   imagePath: AppImages.shagyLogo,
-                  title: "SHAGY",
+                  title: "SHAGY AI",
                   subtitle: "Describe symptoms and get instant guidance",
                   isImage: true,
                 ),
@@ -216,8 +216,7 @@ class _PatientHomeTabState extends State<PatientHomeTab> {
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: isImage
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12.r),
+                  ? ClipOval( // Use ClipOval for the round logo
                       child: Image.asset(imagePath!, fit: BoxFit.cover),
                     )
                   : Icon(icon, color: iconColor ?? AppColors.primaryBlue, size: 24.r),
@@ -227,7 +226,7 @@ class _PatientHomeTabState extends State<PatientHomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.titleMedium),
+                  Text(title, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
                   Text(
                     subtitle,
                     style: AppTextStyles.bodySmall,

@@ -14,6 +14,6 @@ class AppImages {
   static const String profileSelectedIcon = "assets/images/profile_selected.svg";
   static const String profileUnselectedIcon = "assets/images/profile_unselected.svg";
   static const String dentexLogo = "assets/images/dentexLogo.png";
-  static const String shagyLogo = "assets/images/dr_shagy_logo.jpg";
+  static const String shagyLogo = "assets/images/shagylogo.png"; // Updated to png
   static const String onboarding = "assets/images/onboarding.png";
 }

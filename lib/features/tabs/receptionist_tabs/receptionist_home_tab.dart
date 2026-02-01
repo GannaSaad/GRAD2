@@ -8,6 +8,7 @@ import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../auth/auth_cubit/auth_cubit.dart';
 import '../../../domain/entities/appointment_entity.dart';
+import '../../../domain/entities/no_show_prediction.dart';
 import '../patients_tab/cubit/patients_view_model.dart';
 
 class ReceptionistHomeTab extends StatefulWidget {
@@ -104,7 +105,7 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Assigned to: Dr. $doctorName", style: AppTextStyles.titleSmall.copyWith(color: Colors.white)),
+                Text("Assigned to: $doctorName", style: AppTextStyles.titleSmall.copyWith(color: Colors.white)),
                 Text("Front Desk Coordinator", style: AppTextStyles.labelSmall.copyWith(color: Colors.white70)),
               ],
             ),
@@ -182,7 +183,11 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
             padding: EdgeInsets.symmetric(horizontal: 24.w),
             physics: const BouncingScrollPhysics(),
             itemCount: dailyAppointments.length,
-            itemBuilder: (context, index) => _buildAppointmentCard(dailyAppointments[index]),
+            itemBuilder: (context, index) {
+              final appointment = dailyAppointments[index];
+              final prediction = state.predictions[appointment.patientId];
+              return _buildAppointmentCard(appointment, prediction);
+            },
           );
         }
         return const SizedBox.shrink();
@@ -190,7 +195,14 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
     );
   }
 
-  Widget _buildAppointmentCard(AppointmentEntity appointment) {
+  Widget _buildAppointmentCard(AppointmentEntity appointment, NoShowPrediction? prediction) {
+    Color riskColor = Colors.grey;
+    if (prediction != null) {
+      if (prediction.probability > 70) riskColor = Colors.red;
+      else if (prediction.probability > 30) riskColor = Colors.orange;
+      else riskColor = Colors.green;
+    }
+
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
@@ -211,7 +223,7 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
                 'image': appointment.patientImage ?? 'assets/images/patient.jpeg',
                 'case': appointment.caseDescription,
                 'time': appointment.time,
-                'patientId': appointment.patientId, // Added this line
+                'patientId': appointment.patientId,
               },
             );
           },
@@ -231,6 +243,26 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
                     children: [
                       Text(appointment.patientName, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                       Text(appointment.caseDescription, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
+                      if (prediction != null) ...[
+                        SizedBox(height: 4.h),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8.r,
+                              height: 8.r,
+                              decoration: BoxDecoration(color: riskColor, shape: BoxShape.circle),
+                            ),
+                            SizedBox(width: 6.w),
+                            Text(
+                              "${prediction.probability.toStringAsFixed(1)}% No-Show Risk",
+                              style: AppTextStyles.labelSmall.copyWith(color: riskColor, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        SizedBox(height: 4.h),
+                        Text("Calculating risk...", style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+                      ],
                     ],
                   ),
                 ),
