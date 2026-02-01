@@ -49,6 +49,51 @@ class _WebServices implements WebServices {
   }
 
   @override
+  Future<DoctorClinicalResponse> doctorChatWithImage(
+    File image,
+    String? question,
+  ) async {
+    const _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    final _data = FormData();
+    _data.files.add(MapEntry(
+      'image',
+      MultipartFile.fromFileSync(
+        image.path,
+        filename: image.path.split(Platform.pathSeparator).last,
+      ),
+    ));
+    if (question != null) {
+      _data.fields.add(MapEntry(
+        'question',
+        question,
+      ));
+    }
+    final _result = await _dio.fetch<Map<String, dynamic>>(
+        _setStreamType<DoctorClinicalResponse>(Options(
+      method: 'POST',
+      headers: _headers,
+      extra: _extra,
+      contentType: 'multipart/form-data',
+    )
+            .compose(
+              _dio.options,
+              '/doctor/chat-with-image',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final value = DoctorClinicalResponse.fromJson(_result.data!);
+    return value;
+  }
+
+  @override
   Future<PredictionResponse> getNoShowPrediction(
     int appointments,
     int cancellations,

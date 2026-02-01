@@ -2,9 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../core/core/utils/app_assets.dart';
+import '../../../api/config/di/di.dart';
+import '../../../api/web_services.dart';
+import '../../../api/models/doctor_clinical_response.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import '../../../core/core/utils/app_assets.dart';
 
 class DoctorChatBotTab extends StatefulWidget {
   const DoctorChatBotTab({super.key});
@@ -17,6 +20,10 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
   final TextEditingController _searchController = TextEditingController();
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+  String? _analysisResult;
+
+  final WebServices _webServices = getIt<WebServices>();
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -24,6 +31,7 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
       if (image != null) {
         setState(() {
           _selectedImage = File(image.path);
+          _analysisResult = null;
         });
       }
     } catch (e) {
@@ -31,11 +39,44 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
     }
   }
 
-  void _onSearch() {
-    if (_searchController.text.isEmpty && _selectedImage == null) return;
-    
-    debugPrint("Clinical Search Triggered: ${_searchController.text}");
-    if (_selectedImage != null) debugPrint("Image selected for analysis: ${_selectedImage!.path}");
+  void _onSearch() async {
+    if (_selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please upload a clinical image first")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _analysisResult = null;
+    });
+
+    try {
+      final response = await _webServices.doctorChatWithImage(
+        _selectedImage!,
+        _searchController.text.isEmpty ? "Analyze this image" : _searchController.text,
+      );
+
+      if (mounted) {
+        setState(() {
+          if (response.status == "error") {
+            _analysisResult = "AI Error: ${response.error ?? 'Unknown failure'}";
+          } else {
+            _analysisResult = response.answer ?? "Analysis complete, but no report was generated.";
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Dio Error: $e");
+      if (mounted) {
+        setState(() {
+          _analysisResult = "Connection Error: Failed to reach the AI server. Ensure your backend is live.";
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -43,7 +84,7 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text("AI Assistant", style: AppTextStyles.medium18White.copyWith(color: AppColors.primaryBlue)),
+        title: Text("Clinical AI", style: AppTextStyles.medium18White.copyWith(color: AppColors.primaryBlue)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -54,9 +95,8 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
           padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             children: [
-              SizedBox(height: 40.h),
+              SizedBox(height: 20.h),
               
-              // Image Preview or Shagy Logo
               if (_selectedImage != null)
                 _buildImagePreview()
               else
@@ -64,24 +104,61 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
 
               SizedBox(height: 32.h),
               
-              Text("Shagy Assistant", style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+              Text("Shagy Diagnostic Assistant", style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
               SizedBox(height: 12.h),
-              Text("Search clinical records or upload images.", textAlign: TextAlign.center, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+              Text("Upload clinical photos for pathology analysis.", textAlign: TextAlign.center, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
               
-              SizedBox(height: 40.h),
+              SizedBox(height: 30.h),
 
-              // Search & Upload Bar
               _buildSearchInput(),
 
-              SizedBox(height: 24.h),
+              SizedBox(height: 20.h),
 
-              // Search Button
-              _buildSearchButton(),
+              _buildAnalyzeButton(),
               
+              if (_isLoading)
+                Padding(
+                  padding: EdgeInsets.only(top: 20.h),
+                  child: const CircularProgressIndicator(color: AppColors.primaryBlue),
+                ),
+
+              if (_analysisResult != null)
+                _buildAnalysisResult(),
+
               SizedBox(height: 40.h),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAnalysisResult() {
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(top: 30.h),
+      padding: EdgeInsets.all(20.r),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(24.r),
+        border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.2)),
+        boxShadow: [BoxShadow(color: AppColors.primaryBlue.withValues(alpha: 0.05), blurRadius: 20)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
+              SizedBox(width: 8.w),
+              Text("Shagy Clinical Report", 
+                style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryBlue)
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          Text(_analysisResult!, style: AppTextStyles.bodyMedium.copyWith(height: 1.5)),
+        ],
       ),
     );
   }
@@ -93,7 +170,7 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24.r),
         image: DecorationImage(image: FileImage(_selectedImage!), fit: BoxFit.cover),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 15)],
       ),
       child: Stack(
         children: [
@@ -118,7 +195,7 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor.withOpacity(0.05),
+            color: AppColors.shadowColor.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           )
@@ -137,13 +214,13 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20.r),
         border: Border.all(color: AppColors.borderSoft),
-        boxShadow: [BoxShadow(color: AppColors.shadowColor.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.shadowColor.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: "Enter clinical symptoms...",
+          hintText: "Add clinical symptoms/notes...",
           border: InputBorder.none,
           suffixIcon: IconButton(
             icon: Icon(Icons.add_a_photo, color: AppColors.primaryBlue),
@@ -154,17 +231,19 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
     );
   }
 
-  Widget _buildSearchButton() {
+  Widget _buildAnalyzeButton() {
     return SizedBox(
       width: double.infinity,
       height: 55.h,
       child: ElevatedButton(
-        onPressed: _onSearch,
+        onPressed: _isLoading ? null : _onSearch,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryBlue,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         ),
-        child: Text("Analyze", style: AppTextStyles.buttonMedium.copyWith(color: Colors.white)),
+        child: Text(_isLoading ? "Analyzing..." : "Start Analysis", 
+          style: AppTextStyles.buttonMedium.copyWith(color: Colors.white)
+        ),
       ),
     );
   }
@@ -184,7 +263,7 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
           children: [
             ListTile(
               leading: const CircleAvatar(backgroundColor: Color(0xFFF0F7FF), child: Icon(Icons.camera_alt, color: AppColors.primaryBlue)),
-              title: const Text("Open Camera"),
+              title: const Text("Capture Photo"),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -192,7 +271,7 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> {
             ),
             ListTile(
               leading: const CircleAvatar(backgroundColor: Color(0xFFF0F7FF), child: Icon(Icons.photo_library, color: AppColors.primaryBlue)),
-              title: const Text("Select from Gallery"),
+              title: const Text("Pick from Gallery"),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);

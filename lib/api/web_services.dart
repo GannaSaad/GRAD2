@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 import 'models/prediction_response.dart';
 import 'models/chat_response.dart';
+import 'models/doctor_clinical_response.dart';
 
 part 'web_services.g.dart';
 
@@ -11,6 +13,13 @@ abstract class WebServices {
 
   @POST("/chat")
   Future<ChatResponse> getShagyReply(@Body() Map<String, dynamic> body);
+
+  @POST("/doctor/chat-with-image")
+  @MultiPart()
+  Future<DoctorClinicalResponse> doctorChatWithImage(
+    @Part(name: "image") File image,
+    @Part(name: "question") String? question,
+  );
 
   @GET("/predict")
   Future<PredictionResponse> getNoShowPrediction(
