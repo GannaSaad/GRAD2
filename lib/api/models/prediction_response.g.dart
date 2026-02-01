@@ -8,8 +8,8 @@ part of 'prediction_response.dart';
 
 PredictionResponse _$PredictionResponseFromJson(Map<String, dynamic> json) =>
     PredictionResponse(
-      (json['probability'] as num).toDouble(),
-      json['status'] as String,
+      probability: (json['probability'] as num?)?.toDouble(),
+      status: json['status'] as String?,
     );
 
 Map<String, dynamic> _$PredictionResponseToJson(PredictionResponse instance) =>

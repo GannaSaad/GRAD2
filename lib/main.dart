@@ -1,7 +1,5 @@
 import 'package:dentex_clean/api/config/di/di.dart';
 import 'package:dentex_clean/features/onboarding/onboarding_screen.dart';
-import 'package:dentex_clean/features/home_screen/home_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -38,10 +36,8 @@ class MyApp extends StatelessWidget {
         return BlocBuilder<ThemeCubit, ThemeMode>(
           builder: (context, themeMode) {
             return MaterialApp(
-              // Automatically go to Home if already logged in
-              home: FirebaseAuth.instance.currentUser != null 
-                  ? const HomeScreen() 
-                  : const OnboardingScreen(),
+              // Always go to Onboarding on startup/hot restart
+              home: const OnboardingScreen(),
               onGenerateRoute: AppRouter.generateRoute,
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,

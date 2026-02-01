@@ -6,6 +6,7 @@ import '../../core/core/utils/app_assets.dart';
 import '../../core/core/utils/app_colors.dart';
 import '../tabs/activity_tab/activity_tab.dart';
 import '../tabs/chatbot_tab/chatbot_tab.dart';
+import '../tabs/chatbot_tab/doctor_chatbot_tab.dart';
 import '../tabs/home_tab/home_tab.dart';
 import '../tabs/profile_tab/profile_tab.dart';
 import '../doctors/doctors_listing_screen.dart';
@@ -104,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
         case 0: return const DoctorHomeTab();
         case 1: return const PatientsTab();
         case 2: return const AvailabilityTab();
+        case 3: return const DoctorChatBotTab(); // Corrected: Using DoctorChatBotTab here
         case 4: return const ProfileTab();
         default: return const DoctorHomeTab();
       }

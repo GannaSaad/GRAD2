@@ -7,6 +7,7 @@ import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../domain/entities/appointment_entity.dart';
+import '../../../domain/entities/no_show_prediction.dart';
 import 'cubit/patients_view_model.dart';
 
 class PatientsTab extends StatefulWidget {
@@ -40,11 +41,7 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
       child: Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
         appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text("Patients", style: AppTextStyles.titleLarge.copyWith(color: AppColors.primaryColor)),
+          title: Text("Clinical Management", style: AppTextStyles.titleLarge.copyWith(color: AppColors.primaryBlue)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -67,9 +64,9 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
                     return TabBarView(
                       controller: _tabController,
                       children: [
-                        _buildPatientsList(complete, "No completed visits"),
-                        _buildPatientsList(upcoming, "No upcoming appointments"),
-                        _buildPatientsList(rescheduled, "No rescheduled visits"),
+                        _buildPatientsList(complete, state.predictions, "No completed clinical sessions."),
+                        _buildPatientsList(upcoming, state.predictions, "No pending appointments."),
+                        _buildPatientsList(rescheduled, state.predictions, "No rescheduled sessions."),
                       ],
                     );
                   }
@@ -100,7 +97,7 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
             BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
           ],
         ),
-        labelColor: AppColors.primaryColor,
+        labelColor: AppColors.primaryBlue,
         unselectedLabelColor: AppColors.textSecondary,
         labelStyle: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.bold, fontSize: 13.sp),
         indicatorSize: TabBarIndicatorSize.tab,
@@ -109,7 +106,7 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildPatientsList(List<AppointmentEntity> appointments, String emptyMsg) {
+  Widget _buildPatientsList(List<AppointmentEntity> appointments, Map<String, NoShowPrediction> predictions, String emptyMsg) {
     if (appointments.isEmpty) {
       return Center(child: Text(emptyMsg, style: AppTextStyles.bodyMedium));
     }
@@ -119,12 +116,14 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
       physics: const BouncingScrollPhysics(),
       itemCount: appointments.length,
       itemBuilder: (context, index) {
-        return _buildPatientCard(appointments[index]);
+        final appt = appointments[index];
+        final prediction = predictions[appt.patientId];
+        return _buildPatientCard(appt, prediction);
       },
     );
   }
 
-  Widget _buildPatientCard(AppointmentEntity appointment) {
+  Widget _buildPatientCard(AppointmentEntity appointment, NoShowPrediction? prediction) {
     final bool hasRealPhoto = appointment.patientImage != null && 
                              appointment.patientImage!.startsWith('http');
 
@@ -134,9 +133,8 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        border: Border.all(color: AppColors.borderSoft),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,34 +142,17 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
           Row(
             children: [
               _buildAvatar(appointment, hasRealPhoto),
-              SizedBox(width: 12.w),
+              SizedBox(width: 16.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(appointment.patientName, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
-                        if (appointment.isReceptionistBooking)
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryBlueSoft,
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                            child: Text(
-                              "Reception",
-                              style: AppTextStyles.labelSmall.copyWith(
-                                color: AppColors.primaryBlue,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10.sp,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    Text(appointment.caseDescription, style: AppTextStyles.bodySmall),
+                    Text(appointment.patientName, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+                    Text(appointment.caseDescription, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                    if (prediction != null) ...[
+                      SizedBox(height: 8.h),
+                      _buildNoShowChip(prediction.probability),
+                    ],
                   ],
                 ),
               ),
@@ -180,13 +161,13 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
           const Divider(height: 32),
           Row(
             children: [
-              Icon(Icons.calendar_today_outlined, size: 16.r, color: AppColors.textSecondary),
+              Icon(Icons.calendar_today_outlined, size: 16.r, color: AppColors.primaryBlue),
               SizedBox(width: 8.w),
-              Text(DateFormat('dd MMM yyyy').format(appointment.date), style: AppTextStyles.bodySmall),
-              SizedBox(width: 20.w),
-              Icon(Icons.access_time, size: 16.r, color: AppColors.textSecondary),
+              Text(DateFormat('dd MMM yyyy').format(appointment.date), style: AppTextStyles.labelSmall),
+              const Spacer(),
+              Icon(Icons.access_time, size: 16.r, color: AppColors.primaryBlue),
               SizedBox(width: 8.w),
-              Text(appointment.time, style: AppTextStyles.bodySmall),
+              Text(appointment.time, style: AppTextStyles.labelSmall),
             ],
           ),
           SizedBox(height: 20.h),
@@ -202,11 +183,11 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
+                    backgroundColor: AppColors.primaryBlue,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                     padding: EdgeInsets.symmetric(vertical: 12.h),
                   ),
-                  child: Text("Details", style: AppTextStyles.buttonSmall),
+                  child: Text("Case Details", style: AppTextStyles.buttonSmall),
                 ),
               ),
               if (appointment.status != 'Completed') ...[
@@ -215,7 +196,7 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
                   onTap: () {
                     _viewModel.markAsComplete(appointment.id);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Appointment with ${appointment.patientName} marked as complete!")),
+                      SnackBar(content: Text("Session with ${appointment.patientName} marked as complete!")),
                     );
                   },
                   child: _buildActionIcon(Icons.check_circle_outline, Colors.green),
@@ -233,26 +214,44 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
     );
   }
 
+  Widget _buildNoShowChip(double probability) {
+    Color color = Colors.green;
+    if (probability > 70) color = Colors.red;
+    else if (probability > 40) color = Colors.orange;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.analytics_outlined, size: 12.r, color: color),
+          SizedBox(width: 6.w),
+          Text(
+            "${probability.toStringAsFixed(1)}% No-Show Risk",
+            style: TextStyle(color: color, fontSize: 10.sp, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAvatar(AppointmentEntity appointment, bool hasRealPhoto) {
     if (hasRealPhoto) {
       return CircleAvatar(
-        radius: 25.r,
+        radius: 28.r,
         backgroundImage: NetworkImage(appointment.patientImage!),
       );
     } else {
-      final String initials = appointment.patientName.isNotEmpty 
-          ? appointment.patientName.trim().split(' ').map((l) => l[0]).take(2).join().toUpperCase()
-          : "?";
-          
       return CircleAvatar(
-        radius: 25.r,
+        radius: 28.r,
         backgroundColor: AppColors.primaryBlueSoft,
         child: Text(
-          initials,
-          style: AppTextStyles.titleSmall.copyWith(
-            color: AppColors.primaryBlue,
-            fontWeight: FontWeight.bold,
-          ),
+          appointment.patientName[0].toUpperCase(),
+          style: AppTextStyles.titleSmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
         ),
       );
     }
@@ -260,10 +259,10 @@ class _PatientsTabState extends State<PatientsTab> with SingleTickerProviderStat
 
   Widget _buildActionIcon(IconData icon, Color color) {
     return Container(
-      padding: EdgeInsets.all(8.r),
+      padding: EdgeInsets.all(10.r),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10.r),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Icon(icon, color: color, size: 22.r),
     );

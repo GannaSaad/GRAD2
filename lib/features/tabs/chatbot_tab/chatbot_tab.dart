@@ -107,9 +107,12 @@ class _ChatBotTabState extends State<ChatBotTab> {
     });
 
     try {
+      // SYNC CHECK: Fetch real booked slots from Firestore via use case
       final booked = await _getBookedSlotsUseCase.call(_selectedDoctor!.id, date);
+      
       if (mounted) {
         setState(() {
+          // EXCLUSION LOGIC: Filter out slots that are already in the booked list
           _availableSlots = _allTimeSlots.where((slot) => !booked.contains(slot)).toList();
           _isLoadingSlots = false;
         });
@@ -144,6 +147,7 @@ class _ChatBotTabState extends State<ChatBotTab> {
     );
 
     try {
+      // SYNC ACTION: Save to Firestore
       await _bookAppointmentUseCase.call(appointment);
       if (mounted) setState(() => _currentStep = ChatStep.success);
     } catch (e) {
@@ -206,7 +210,7 @@ class _ChatBotTabState extends State<ChatBotTab> {
       case ChatStep.choosingDate: return "When would you like to visit Dr. ${_selectedDoctor?.name}?";
       case ChatStep.choosingTime: return "Almost there! What time works best for you on ${DateFormat('MMM d').format(_selectedDate!)}?";
       case ChatStep.booking: return "Booking your appointment...";
-      case ChatStep.success: return "Congratulations! Your appointment is booked. Anything else?";
+      case ChatStep.success: return "Congratulations! Your appointment is booked and synced. Anything else?";
       case ChatStep.chatting: return "Ask me anything!";
     }
   }
@@ -284,7 +288,7 @@ class _ChatBotTabState extends State<ChatBotTab> {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor.withOpacity(0.05),
+            color: AppColors.shadowColor.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           )
@@ -390,7 +394,7 @@ class _ChatBotTabState extends State<ChatBotTab> {
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -487,7 +491,7 @@ class _ChatBotTabState extends State<ChatBotTab> {
           borderRadius: BorderRadius.circular(24.r),
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadowColor.withOpacity(0.15),
+              color: AppColors.shadowColor.withValues(alpha: 0.15),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -530,7 +534,7 @@ class _ChatBotTabState extends State<ChatBotTab> {
       children: [
         Container(
           padding: EdgeInsets.all(20.r),
-          decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), shape: BoxShape.circle),
           child: Icon(Icons.check_circle_outline, color: AppColors.success, size: 80.r),
         ),
         SizedBox(height: 32.h),
@@ -568,7 +572,7 @@ class _ChatBotTabState extends State<ChatBotTab> {
             color: AppColors.cardBackground, 
             borderRadius: BorderRadius.circular(16.r), 
             border: Border.all(color: AppColors.borderSoft),
-            boxShadow: [BoxShadow(color: AppColors.shadowColor.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]
+            boxShadow: [BoxShadow(color: AppColors.shadowColor.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween, 

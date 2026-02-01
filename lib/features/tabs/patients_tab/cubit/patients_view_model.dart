@@ -67,50 +67,37 @@ class PatientsViewModel extends Cubit<PatientsState> {
   }
 
   void _loadPredictionsForPatients(List<AppointmentEntity> appointments) async {
-    final Map<String, NoShowPrediction> currentPredictions = {};
-    final Set<String> processedPatients = {};
+    final Map<String, NoShowPrediction> newPredictions = {};
+    // This is the corrected line. It now safely filters out any null or empty patient IDs.
+    final Set<String> uniquePatientIds = appointments.map((a) => a.patientId).where((id) => id != null && id.isNotEmpty).cast<String>().toSet();
+    
+    final List<Future> predictionFutures = [];
 
-    for (var appointment in appointments) {
-      final patientId = appointment.patientId;
-      if (patientId.isEmpty || processedPatients.contains(patientId)) continue;
-      processedPatients.add(patientId);
-
-      try {
-        // 1. Fetch ALL historical appointments for this patient from Firestore
-        final patientHistory = await _appointmentRepo
-            .getPatientAppointments(patientId)
-            .first
-            .timeout(const Duration(seconds: 10), onTimeout: () => []);
-        
-        int total = patientHistory.length;
-        
-        // 2. Count any status that contains "cancel" (very flexible)
-        int cancelled = patientHistory.where((a) {
-          final s = (a.status ?? "").toLowerCase();
-          return s.contains("cancel");
-        }).length;
-
-        print("DEBUG: Processing $patientId | Total: $total | Cancelled: $cancelled");
+    for (String patientId in uniquePatientIds) {
+      final future = _appointmentRepo.getPatientAppointments(patientId).first.then((history) async {
+        int total = history.length;
+        int cancelled = history.where((a) => a.status == 'Cancelled').length;
 
         if (total > 0) {
-          // 3. Call Google Cloud AI with a longer timeout (15s) to allow for "Cold Start"
-          final prediction = await _getNoShowPredictionUseCase
-              .execute(patientId, total, cancelled)
-              .timeout(const Duration(seconds: 15));
-          
-          currentPredictions[patientId] = prediction;
-        } else {
-          currentPredictions[patientId] = NoShowPrediction(probability: 0, patientId: patientId);
+          try {
+            final prediction = await _getNoShowPredictionUseCase.execute(patientId, total, cancelled);
+            newPredictions[patientId] = prediction;
+          } catch (e) {
+            print("Prediction failed for $patientId: $e");
+          }
         }
-      } catch (e) {
-        print("AI ERROR for $patientId: $e");
-        // If it fails, we keep it as null or 0 to indicate failure
-        currentPredictions[patientId] = NoShowPrediction(probability: 0, patientId: patientId);
-      }
+      });
+      predictionFutures.add(future);
+    }
 
-      if (state is PatientsSuccess && !isClosed) {
-        final currentState = state as PatientsSuccess;
-        emit(PatientsSuccess(currentState.appointments, predictions: Map.from(currentPredictions)));
+    // Wait for all prediction fetches to complete.
+    await Future.wait(predictionFutures);
+
+    // Emit a single success state with all the fetched predictions.
+    if (!isClosed) {
+      final currentState = state;
+      if (currentState is PatientsSuccess) {
+        emit(PatientsSuccess(currentState.appointments, predictions: newPredictions));
       }
     }
   }

@@ -1,10 +1,19 @@
 class NoShowPrediction {
-  final double probability; // The percentage returned by the API
   final String patientId;
+  final double probability;
+  final int appointments;
+  final int cancellations;
+  final int pending;
 
-  NoShowPrediction({required this.probability, required this.patientId});
+  NoShowPrediction({
+    required this.patientId,
+    required this.probability,
+    this.appointments = 0,
+    this.cancellations = 0,
+    this.pending = 0,
+  });
 
-  // Logic to determine risk level
+  // This adds the logic to show text instead of just numbers
   String get riskLevel {
     if (probability > 70) return "High Risk";
     if (probability > 30) return "Moderate Risk";
