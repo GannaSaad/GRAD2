@@ -48,6 +48,9 @@ class BookingViewModel extends Cubit<BookingState> {
     String? patientPhone,
     String? caseDescription,
     bool isReceptionistBooking = false,
+    bool isEmergency = false,
+    String? emergencyReason,
+    String? emergencyDescription,
   }) async {
     emit(BookingLoading());
     try {
@@ -56,22 +59,22 @@ class BookingViewModel extends Cubit<BookingState> {
 
       String finalPatientId = patientId ?? user.uid;
 
-      // Logic: If receptionist is booking a new walk-in, create a persistent profile and link to this doctor
+      // 1. Try to create a walk-in user profile (Silently fail if permissions deny)
+      // This document is useful but not critical for the appointment to exist.
       if (isReceptionistBooking && patientId == null && patientPhone != null) {
         finalPatientId = 'walkin_$patientPhone';
-        final doc = await _firestore.collection('users').doc(finalPatientId).get();
-        if (!doc.exists) {
+        try {
           await _firestore.collection('users').doc(finalPatientId).set({
             'uid': finalPatientId,
             'fullName': patientName,
             'phoneNumber': patientPhone,
             'role': 'patient',
-            'totalToPay': 0,
-            'totalPaid': 0,
-            'assignedDoctorId': doctor.id, // Linked to the doctor who created the staff
+            'assignedDoctorId': doctor.id, 
             'assignedDoctorName': doctor.name,
             'createdAt': FieldValue.serverTimestamp(),
-          });
+          }, SetOptions(merge: true));
+        } catch (e) {
+          print("Firestore Warning: Could not create walk-in user doc (Permission Denied). Proceeding with appointment.");
         }
       }
 
@@ -83,17 +86,29 @@ class BookingViewModel extends Cubit<BookingState> {
         patientName: patientName ?? user.fullName ?? 'Patient',
         date: date,
         time: time,
-        status: 'Confirmed',
-        caseDescription: caseDescription ?? 'Initial Consultation',
+        // We use 'Emergency Request Pending' so clinical staff (Doctor/Nurse) can Accept/Reject it
+        // from their advanced triage dashboard.
+        status: isEmergency ? 'Emergency Request Pending' : 'Confirmed',
+        caseDescription: isEmergency 
+            ? (emergencyReason ?? 'Urgent Care Request') 
+            : (caseDescription ?? 'Regular Check-up'),
         clinicName: 'Dentix Clinic',
         doctorImage: doctor.image,
         isReceptionistBooking: isReceptionistBooking,
+        isEmergency: isEmergency,
+        emergencyReason: emergencyReason,
+        emergencyDescription: emergencyDescription,
       );
 
+      // 2. Main Appointment Creation
       await _bookAppointmentUseCase.call(appointment);
       emit(BookingSuccess());
     } catch (e) {
-      emit(BookingFailure(e.toString().replaceAll('Exception: ', '')));
+      String msg = e.toString().replaceAll('Exception: ', '');
+      if (msg.contains('permission-denied')) {
+        msg = "Permission Denied: Your staff account does not have permission to book for this doctor in Firestore.";
+      }
+      emit(BookingFailure(msg));
     }
   }
 }

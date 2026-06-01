@@ -17,14 +17,12 @@ class AdminHomeTab extends StatefulWidget {
 }
 
 class _AdminHomeTabState extends State<AdminHomeTab> {
-  // Use getIt to get the view model
   final DoctorsListingViewModel _viewModel = getIt<DoctorsListingViewModel>();
   String selectedFilter = "All";
 
   @override
   void initState() {
     super.initState();
-    // Trigger data fetch
     _viewModel.getAllDoctors();
   }
 
@@ -35,7 +33,6 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
       child: Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
         appBar: _buildAppBar(),
-        // Wrap in RefreshIndicator to allow manual reload if the network hangs
         body: RefreshIndicator(
           onRefresh: () async => _viewModel.getAllDoctors(),
           child: CustomScrollView(
@@ -50,7 +47,6 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                 ),
               ),
               SliverToBoxAdapter(child: _buildFilterChips()),
-              // This part handles the Loading/Success/Error states
               _buildDoctorsListContent(),
             ],
           ),
@@ -66,11 +62,19 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
       title: Image.asset(AppImages.dentexLogo, height: 40.h),
       centerTitle: true,
       actions: [
+        // Button to add a new Doctor
         IconButton(
           onPressed: () => Navigator.pushNamed(context, AppRoutes.addDoctor),
-          icon: Icon(Icons.add_circle_outline, color: AppColors.primaryBlue, size: 28.r),
+          icon: Icon(Icons.person_add_alt_1_outlined, color: AppColors.primaryBlue, size: 24.r),
+          tooltip: "Add Doctor",
         ),
-        SizedBox(width: 10.w),
+        // Button to add a new Supplier - FIXED: Added this to the UI
+        IconButton(
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.addSupplier),
+          icon: Icon(Icons.local_shipping_outlined, color: AppColors.primaryBlue, size: 24.r),
+          tooltip: "Add Supplier",
+        ),
+        SizedBox(width: 8.w),
       ],
     );
   }
@@ -85,7 +89,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
         borderRadius: BorderRadius.circular(24.r),
         boxShadow: [
           BoxShadow(
-              color: AppColors.primaryBlue.withOpacity(0.3),
+              color: AppColors.primaryBlue.withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8)
           )
@@ -96,7 +100,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
         children: [
           Text("Clinic Overview", style: AppTextStyles.labelMedium.copyWith(color: Colors.white70)),
           SizedBox(height: 8.h),
-          Text("Manage your elite medical team and patient flow.",
+          Text("Manage your medical team, patients, and logistics partners.",
               style: AppTextStyles.bodyMedium.copyWith(color: Colors.white, height: 1.4)),
         ],
       ),
@@ -126,7 +130,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
               backgroundColor: AppColors.cardBackground,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20.r),
-                  side: BorderSide(color: AppColors.borderSoft)
+                  side: const BorderSide(color: AppColors.borderSoft)
               ),
             ),
           );
@@ -167,7 +171,6 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
           );
         }
 
-        // If it hangs or fails, show an error with a retry button
         return SliverFillRemaining(
           child: Center(
             child: Column(
@@ -195,7 +198,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
         borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4)
           )

@@ -27,6 +27,10 @@ class UserModel {
   final String? assignedDoctorId;
   final String? assignedDoctorName;
 
+  // Supplier specific
+  final String? companyId;
+  final String? address;
+
   UserModel({
     required this.id,
     this.email,
@@ -46,47 +50,57 @@ class UserModel {
     this.totalPaid,
     this.assignedDoctorId,
     this.assignedDoctorName,
+    this.companyId,
+    this.address,
   });
 
-  factory UserModel.fromFirebaseUser(
-      User user, {
-        String? fullName,
-        String? age,
-        String? role,
-        String? phoneNumber,
-        String? gender,
-        String? speciality,
-        String? rank,
-        String? experience,
-        String? education,
-        String? certificates,
-        String? allergies,
-        String? medicalInsurance,
-        String? assignedDoctorId,
-        String? assignedDoctorName,
-        double? totalToPay,
-        double? totalPaid,
-      }) {
+  factory UserModel.fromFirestore(Map<String, dynamic> json, String id) {
     return UserModel(
-      id: user.uid,
-      email: user.email,
-      fullName: fullName ?? user.displayName,
-      age: age,
-      role: role,
-      phoneNumber: phoneNumber,
-      gender: gender,
-      speciality: speciality,
-      rank: rank,
-      experience: experience,
-      education: education,
-      certificates: certificates,
-      allergies: allergies,
-      medicalInsurance: medicalInsurance,
-      assignedDoctorId: assignedDoctorId,
-      assignedDoctorName: assignedDoctorName,
-      totalToPay: totalToPay,
-      totalPaid: totalPaid,
+      id: id,
+      email: json['email'],
+      fullName: json['fullName'],
+      age: json['age'],
+      role: json['role'],
+      phoneNumber: json['phoneNumber'],
+      gender: json['gender'],
+      speciality: json['speciality'],
+      rank: json['rank'],
+      experience: json['experience'],
+      education: json['education'],
+      certificates: json['certificates'],
+      allergies: json['allergies'],
+      medicalInsurance: json['medicalInsurance'],
+      assignedDoctorId: json['assignedDoctorId'],
+      assignedDoctorName: json['assignedDoctorName'],
+      totalToPay: (json['totalToPay'] as num?)?.toDouble(),
+      totalPaid: (json['totalPaid'] as num?)?.toDouble(),
+      companyId: json['companyId'],
+      address: json['address'],
     );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'email': email,
+      'fullName': fullName,
+      'age': age,
+      'role': role,
+      'phoneNumber': phoneNumber,
+      'gender': gender,
+      'speciality': speciality,
+      'rank': rank,
+      'experience': experience,
+      'education': education,
+      'certificates': certificates,
+      'allergies': allergies,
+      'medicalInsurance': medicalInsurance,
+      'assignedDoctorId': assignedDoctorId,
+      'assignedDoctorName': assignedDoctorName,
+      'totalToPay': totalToPay,
+      'totalPaid': totalPaid,
+      'companyId': companyId,
+      'address': address,
+    };
   }
 
   UserEntity toEntity() {
@@ -109,6 +123,8 @@ class UserModel {
       assignedDoctorName: assignedDoctorName,
       totalToPay: totalToPay,
       totalPaid: totalPaid,
+      companyId: companyId,
+      address: address,
     );
   }
 }

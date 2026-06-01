@@ -11,6 +11,7 @@ import '../../../domain/repos/appointment_repo.dart';
 import '../../doctors/cubit/booking_view_model.dart';
 import '../../doctors/doctors_listing_screen.dart';
 import '../../../widgets/widgets/custom_text_form_field.dart';
+import '../../../widgets/widgets/custom_elevated_button.dart';
 
 class ReceptionistActivityTab extends StatefulWidget {
   const ReceptionistActivityTab({super.key});
@@ -28,7 +29,18 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
   final _patientNameController = TextEditingController();
   final _patientPhoneController = TextEditingController();
   final _caseDescriptionController = TextEditingController();
+  final _emergencyDescController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  String? _selectedEmergencyReason;
+  final List<String> _emergencyReasons = [
+    "Severe tooth pain",
+    "Facial swelling",
+    "Bleeding",
+    "Broken tooth / trauma",
+    "Infection symptoms",
+    "Other"
+  ];
 
   @override
   void initState() {
@@ -75,6 +87,8 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
                 _patientNameController.clear();
                 _patientPhoneController.clear();
                 _caseDescriptionController.clear();
+                _emergencyDescController.clear();
+                _selectedEmergencyReason = null;
               });
               _fetchDoctorData();
             } else if (state is BookingFailure) {
@@ -89,6 +103,13 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildDoctorStatusHeader(staff?.assignedDoctorName ?? "Doctor"),
+                SizedBox(height: 16.h),
+                
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: _buildEmergencyTrigger(staff),
+                ),
+
                 SizedBox(height: 24.h),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 24.w),
@@ -111,6 +132,118 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
           ),
         ),
         bottomNavigationBar: _buildActionPanel(staff),
+      ),
+    );
+  }
+
+  Widget _buildEmergencyTrigger(dynamic staff) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _showEmergencyDialog(staff),
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+        label: Text("Book Emergency Appointment 🚨", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13.sp)),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.red, width: 1.5),
+          padding: EdgeInsets.symmetric(vertical: 14.h),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          backgroundColor: Colors.red.withOpacity(0.05),
+        ),
+      ),
+    );
+  }
+
+  void _showEmergencyDialog(dynamic staff) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          title: Row(
+            children: [
+              const Icon(Icons.report_problem, color: Colors.red),
+              SizedBox(width: 10.w),
+              const Text("Emergency Booking"),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Patient Information", style: TextStyle(fontWeight: FontWeight.bold)),
+                  SizedBox(height: 12.h),
+                  CustomTextFormField(
+                    hintText: "Full Name",
+                    controller: _patientNameController,
+                    prefixIcon: const Icon(Icons.person_outline),
+                    validator: (val) => val!.isEmpty ? "Required" : null,
+                  ),
+                  SizedBox(height: 12.h),
+                  CustomTextFormField(
+                    hintText: "Phone Number",
+                    controller: _patientPhoneController,
+                    prefixIcon: const Icon(Icons.phone_outlined),
+                    keyboardType: TextInputType.phone,
+                    validator: (val) => val!.isEmpty ? "Required" : null,
+                  ),
+                  SizedBox(height: 20.h),
+                  const Text("Emergency Details", style: TextStyle(fontWeight: FontWeight.bold)),
+                  SizedBox(height: 12.h),
+                  DropdownButtonFormField<String>(
+                    items: _emergencyReasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (val) => setModalState(() => _selectedEmergencyReason = val),
+                    value: _selectedEmergencyReason,
+                    decoration: InputDecoration(
+                      hintText: "Reason for Emergency",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
+                    ),
+                    validator: (val) => val == null ? "Required" : null,
+                  ),
+                  SizedBox(height: 12.h),
+                  CustomTextFormField(
+                    hintText: "Short description of the case",
+                    controller: _emergencyDescController,
+                    maxLines: 3,
+                    validator: (val) => val!.isEmpty ? "Required" : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: TextStyle(color: AppColors.textSecondary))),
+            ElevatedButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  Navigator.pop(context);
+                  _viewModel.book(
+                    doctor: Doctor(
+                      id: staff.assignedDoctorId,
+                      name: staff.assignedDoctorName,
+                      specialty: '',
+                      image: 'assets/images/doctor.jpg',
+                      rank: '', bio: '', experience: '', rating: '', reviews: '', clinic: '', location: '', latitude: 0, longitude: 0, availability: '', education: [], languages: [], certifications: [], affiliations: []
+                    ),
+                    date: DateTime.now(),
+                    time: "ASAP",
+                    isEmergency: true,
+                    emergencyReason: _selectedEmergencyReason,
+                    emergencyDescription: _emergencyDescController.text.trim(),
+                    patientName: _patientNameController.text.trim(),
+                    patientPhone: _patientPhoneController.text.trim(),
+                    isReceptionistBooking: true,
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+              child: const Text("Book Now"),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -340,6 +473,7 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
     _patientNameController.dispose();
     _patientPhoneController.dispose();
     _caseDescriptionController.dispose();
+    _emergencyDescController.dispose();
     super.dispose();
   }
 }

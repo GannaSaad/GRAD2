@@ -22,5 +22,6 @@ sealed class AppRoutes {
   static const String nursePatientDetails = '/nursePatientDetails';
   static const String adminDoctorDetail = '/adminDoctorDetail';
   static const String receptionistPatientDetails = '/receptionistPatientDetails';
-  static const String addDoctor = '/addDoctor'; // Added this line
+  static const String addDoctor = '/addDoctor';
+  static const String addSupplier = '/addSupplier'; // Added for Admin
 }

@@ -101,6 +101,29 @@ class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
   }
 
   @override
+  Future<void> updateAppointmentStatus(String appointmentId, String status) async {
+    try {
+      await _firestore.collection('appointments').doc(appointmentId).update({
+        'status': status,
+      });
+    } catch (e) {
+      throw Exception('Failed to update appointment status: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<void> resolveEmergency(String appointmentId, String status, bool isEmergency) async {
+    try {
+      await _firestore.collection('appointments').doc(appointmentId).update({
+        'status': status,
+        'isEmergency': isEmergency,
+      });
+    } catch (e) {
+      throw Exception('Failed to resolve emergency: ${e.toString()}');
+    }
+  }
+
+  @override
   Future<List<String>> getBookedSlots(String doctorId, DateTime date) async {
     try {
       final startOfDay = DateTime(date.year, date.month, date.day);

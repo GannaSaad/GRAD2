@@ -37,12 +37,6 @@ class _ProfileTabState extends State<ProfileTab> {
       child: Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
         appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
-            onPressed: () {
-              // Optional: Handle back navigation
-            },
-          ),
           title: Text("My Profile", style: AppTextStyles.bold18White.copyWith(color: AppColors.primaryColor)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
@@ -123,7 +117,6 @@ class _ProfileTabState extends State<ProfileTab> {
             icon: Icons.person_outline,
             label: "Profile",
             onTap: () {
-              // Admin can now edit their profile like everyone else
               Navigator.pushNamed(context, AppRoutes.profileEditing);
             },
           ),
@@ -168,8 +161,11 @@ class _ProfileTabState extends State<ProfileTab> {
             icon: Icons.logout,
             label: "Logout",
             isLogout: true,
-            onTap: () {
-              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+            onTap: () async {
+              await getIt<AuthCubit>().logout();
+              if (mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+              }
             },
           ),
         ],

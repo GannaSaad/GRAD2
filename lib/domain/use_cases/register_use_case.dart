@@ -23,6 +23,8 @@ class RegisterUseCase {
     String? certificates,
     String? allergies,
     String? medicalInsurance,
+    String? companyId,
+    String? address,
   }) {
     return _authRepo.register(
       email: email,
@@ -39,6 +41,8 @@ class RegisterUseCase {
       certificates: certificates,
       allergies: allergies,
       medicalInsurance: medicalInsurance,
+      companyId: companyId,
+      address: address,
     );
   }
 }

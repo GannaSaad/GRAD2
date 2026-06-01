@@ -1,5 +1,6 @@
 import 'package:injectable/injectable.dart';
 import 'package:dentex_clean/domain/entities/user_entity.dart';
+import 'package:dentex_clean/domain/entities/supplier_entity.dart';
 import 'package:dentex_clean/domain/repos/auth_repo.dart';
 import 'package:dentex_clean/data/data_sources/remote/auth_remote_data_source.dart';
 
@@ -25,6 +26,8 @@ class AuthRepositoryImpl implements AuthRepo {
     String? certificates,
     String? allergies,
     String? medicalInsurance,
+    String? companyId,
+    String? address,
   }) async {
     final userModel = await _remoteDataSource.register(
       email: email,
@@ -41,6 +44,8 @@ class AuthRepositoryImpl implements AuthRepo {
       certificates: certificates,
       allergies: allergies,
       medicalInsurance: medicalInsurance,
+      companyId: companyId,
+      address: address,
     );
 
     return userModel.toEntity();
@@ -73,6 +78,18 @@ class AuthRepositoryImpl implements AuthRepo {
   @override
   Future<List<UserEntity>> getAllPatients() async {
     final models = await _remoteDataSource.getAllPatients();
+    return models.map((model) => model.toEntity()).toList();
+  }
+
+  @override
+  Future<List<UserEntity>> getAllSuppliers() async {
+    final models = await _remoteDataSource.getAllSuppliers();
+    return models.map((model) => model.toEntity()).toList();
+  }
+
+  @override
+  Future<List<SupplierEntity>> getSuppliersByCompany(String companyId) async {
+    final models = await _remoteDataSource.getSuppliersByCompany(companyId);
     return models.map((model) => model.toEntity()).toList();
   }
 

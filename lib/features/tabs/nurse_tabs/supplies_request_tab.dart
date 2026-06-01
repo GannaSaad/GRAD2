@@ -6,6 +6,8 @@ import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../domain/entities/request_entity.dart';
+import '../../../domain/entities/supplier_entity.dart';
+import '../../../domain/repos/auth_repo.dart';
 import 'cubit/request_view_model.dart';
 
 class SuppliesRequestTab extends StatefulWidget {
@@ -19,7 +21,10 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
   final RequestViewModel _viewModel = getIt<RequestViewModel>();
   final _itemNameController = TextEditingController();
   final _quantityController = TextEditingController();
-  String? _selectedSupplier;
+  final _notesController = TextEditingController();
+  DateTime? _selectedNeededBy;
+  String? _selectedCompany;
+  String? _selectedSupplierId;
 
   @override
   void initState() {
@@ -55,7 +60,7 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
                   }
 
                   if (requests.isEmpty) {
-                    return Center(child: Text("No requests found", style: AppTextStyles.bodyMedium));
+                    return _buildEmptyState();
                   }
                   
                   return ListView.builder(
@@ -78,6 +83,19 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inventory_2_outlined, size: 64.r, color: AppColors.borderMedium),
+          SizedBox(height: 16.h),
+          Text("No requests found", style: AppTextStyles.titleMedium.copyWith(color: AppColors.textSecondary)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActionHeader() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20.w),
@@ -92,7 +110,7 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
           SizedBox(width: 12.w),
           Expanded(
             child: Text(
-              " Create and track supply orders",
+              " Create and track supply orders for the clinic",
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.primaryBlue),
             ),
           ),
@@ -103,11 +121,13 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
 
   Widget _buildRequestCard(RequestEntity request) {
     Color statusColor;
-    switch (request.status) {
-      case 'Pending': statusColor = AppColors.warning; break;
-      case 'Approved': statusColor = Colors.blue; break;
-      case 'Shipped': statusColor = Colors.purple; break;
-      case 'Received': statusColor = AppColors.success; break;
+    switch (request.status.toLowerCase()) {
+      case 'pending': case 'new': statusColor = Colors.blue; break;
+      case 'accepted': statusColor = AppColors.success; break;
+      case 'preparing': statusColor = Colors.purple; break;
+      case 'shipped': statusColor = Colors.orange; break;
+      case 'delivered': case 'received': statusColor = AppColors.primaryBlue; break;
+      case 'delayed': statusColor = AppColors.error; break;
       default: statusColor = AppColors.textSecondary;
     }
 
@@ -119,7 +139,7 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
         borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor,
+            color: AppColors.shadowColor.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -131,7 +151,7 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("ID: ${request.id.substring(request.id.length > 6 ? request.id.length - 6 : 0)}", 
+              Text("ID: ${request.id.length > 6 ? request.id.substring(request.id.length - 6).toUpperCase() : request.id.toUpperCase()}", 
                 style: AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.bold, color: AppColors.textTertiary)),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -153,20 +173,40 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
             children: [
               Icon(Icons.inventory_2_outlined, size: 14.r, color: AppColors.textSecondary),
               SizedBox(width: 4.w),
-              Text("Quantity: ${request.quantity}", style: AppTextStyles.bodySmall),
+              Text("Qty: ${request.quantity}", style: AppTextStyles.bodySmall),
               const Spacer(),
               Icon(Icons.business_outlined, size: 14.r, color: AppColors.textSecondary),
               SizedBox(width: 4.w),
               Text(request.supplier, style: AppTextStyles.bodySmall),
             ],
           ),
+          if (request.neededBy != null) ...[
+            SizedBox(height: 4.h),
+            Row(
+              children: [
+                Icon(Icons.event_available_outlined, size: 14.r, color: AppColors.error),
+                SizedBox(width: 4.w),
+                Text(
+                  "Needed by: ${DateFormat('dd MMM yyyy').format(request.neededBy!)}",
+                  style: AppTextStyles.labelSmall.copyWith(color: AppColors.error, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
+          if (request.notes != null && request.notes!.isNotEmpty) ...[
+            SizedBox(height: 8.h),
+            Text(
+              "Note: ${request.notes}",
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+            ),
+          ],
           const Divider(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text("Requested: ${DateFormat('dd MMM yyyy').format(request.date)}", 
                 style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
-              if (request.status != 'Received')
+              if (request.status.toLowerCase() != 'received' && request.status.toLowerCase() != 'delivered')
                 SizedBox(
                   height: 30.h,
                   child: OutlinedButton(
@@ -192,47 +232,155 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
   void _showCreateRequestDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-        title: Text("New Supply Request", style: AppTextStyles.titleMedium),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: _itemNameController, decoration: InputDecoration(hintText: "Item Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)))),
-            SizedBox(height: 12.h),
-            TextField(controller: _quantityController, keyboardType: TextInputType.number, decoration: InputDecoration(hintText: "Quantity", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)))),
-            SizedBox(height: 12.h),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r))),
-              hint: const Text("Select Supplier"),
-              items: ["DentalCare Supplies", "Medipro Ltd.", "Global Health"].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (val) => _selectedSupplier = val,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          backgroundColor: AppColors.backgroundPrimary,
+          title: Text("New Supply Request", style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDialogField(_itemNameController, "Item Name", Icons.inventory_2_outlined),
+                SizedBox(height: 16.h),
+                _buildDialogField(_quantityController, "Quantity", Icons.format_list_numbered, keyboardType: TextInputType.number),
+                SizedBox(height: 16.h),
+                
+                // 1. SELECT COMPANY
+                DropdownButtonFormField<String>(
+                  decoration: _getDropdownDecoration("Select Company", Icons.business_outlined),
+                  items: ["DentalCare Supplies", "Medipro Ltd.", "Global Health"].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  onChanged: (val) {
+                    setDialogState(() {
+                      _selectedCompany = val;
+                      _selectedSupplierId = null;
+                    });
+                  },
+                ),
+                SizedBox(height: 16.h),
+
+                // 2. SELECT CONTACT PERSON (Filtered by Company)
+                if (_selectedCompany != null)
+                  FutureBuilder<List<SupplierEntity>>(
+                    future: getIt<AuthRepo>().getSuppliersByCompany(_selectedCompany!),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final companyContacts = snapshot.data ?? [];
+                      
+                      return DropdownButtonFormField<String>(
+                        decoration: _getDropdownDecoration("Select Contact Person", Icons.person_outline),
+                        hint: Text(companyContacts.isEmpty ? "No contacts found" : "Select Contact"),
+                        items: companyContacts.map((s) => DropdownMenuItem(
+                          value: s.id,
+                          child: Text(s.name),
+                        )).toList(),
+                        onChanged: (val) {
+                          setDialogState(() => _selectedSupplierId = val);
+                        },
+                      );
+                    },
+                  ),
+                
+                SizedBox(height: 16.h),
+                _buildDialogField(_notesController, "Notes (Optional)", Icons.note_alt_outlined),
+                SizedBox(height: 16.h),
+                
+                InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now().add(const Duration(days: 1)),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) {
+                      setDialogState(() => _selectedNeededBy = date);
+                    }
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.borderSoft),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today_outlined, color: AppColors.textSecondary, size: 20),
+                        SizedBox(width: 12.w),
+                        Text(
+                          _selectedNeededBy == null ? "Needed By Date" : DateFormat('dd MMM yyyy').format(_selectedNeededBy!),
+                          style: TextStyle(color: _selectedNeededBy == null ? AppColors.textTertiary : AppColors.textPrimary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel", style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (_itemNameController.text.isNotEmpty && _quantityController.text.isNotEmpty && _selectedCompany != null) {
+                  _viewModel.createRequest(
+                    itemName: _itemNameController.text,
+                    quantity: int.parse(_quantityController.text),
+                    supplier: _selectedCompany!, 
+                    supplierId: _selectedSupplierId, 
+                    notes: _notesController.text,
+                    neededBy: _selectedNeededBy,
+                  );
+                  Navigator.pop(context);
+                  _itemNameController.clear();
+                  _quantityController.clear();
+                  _notesController.clear();
+                  _selectedNeededBy = null;
+                  _selectedCompany = null;
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                elevation: 0,
+              ),
+              child: const Text("Send Request", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: TextStyle(color: AppColors.textSecondary))),
-          ElevatedButton(
-            onPressed: () {
-              if (_itemNameController.text.isNotEmpty && _quantityController.text.isNotEmpty && _selectedSupplier != null) {
-                _viewModel.createRequest(
-                  itemName: _itemNameController.text,
-                  quantity: int.parse(_quantityController.text),
-                  supplier: _selectedSupplier!,
-                );
-                Navigator.pop(context);
-                _itemNameController.clear();
-                _quantityController.clear();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              foregroundColor: AppColors.primaryGoldLight, // Text color set to Beige
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-            ),
-            child: const Text("Send Request", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
+      ),
+    );
+  }
+
+  InputDecoration _getDropdownDecoration(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: const BorderSide(color: AppColors.borderSoft)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: const BorderSide(color: AppColors.borderSoft)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: const BorderSide(color: AppColors.primaryBlue)),
+    );
+  }
+
+  Widget _buildDialogField(TextEditingController controller, String hint, IconData icon, {TextInputType keyboardType = TextInputType.text}) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: const BorderSide(color: AppColors.borderSoft)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: const BorderSide(color: AppColors.borderSoft)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: const BorderSide(color: AppColors.primaryBlue)),
       ),
     );
   }
@@ -241,6 +389,7 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
   void dispose() {
     _itemNameController.dispose();
     _quantityController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 }

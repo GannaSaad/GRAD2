@@ -25,6 +25,10 @@ class UserEntity {
   final String? assignedDoctorId;
   final String? assignedDoctorName;
 
+  // Supplier specific
+  final String? companyId;
+  final String? address;
+
   UserEntity({
     required this.uid,
     required this.email,
@@ -45,6 +49,8 @@ class UserEntity {
     this.totalPaid,
     this.assignedDoctorId,
     this.assignedDoctorName,
+    this.companyId,
+    this.address,
   });
 
   UserEntity copyWith({
@@ -67,6 +73,8 @@ class UserEntity {
     double? totalPaid,
     String? assignedDoctorId,
     String? assignedDoctorName,
+    String? companyId,
+    String? address,
   }) {
     return UserEntity(
       uid: uid ?? this.uid,
@@ -88,6 +96,8 @@ class UserEntity {
       totalPaid: totalPaid ?? this.totalPaid,
       assignedDoctorId: assignedDoctorId ?? this.assignedDoctorId,
       assignedDoctorName: assignedDoctorName ?? this.assignedDoctorName,
+      companyId: companyId ?? this.companyId,
+      address: address ?? this.address,
     );
   }
 }

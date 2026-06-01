@@ -40,8 +40,8 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
   Widget build(BuildContext context) {
     final user = getIt<AuthCubit>().currentUser;
 
-    return BlocProvider(
-      create: (context) => _viewModel,
+    return BlocProvider.value(
+      value: _viewModel,
       child: Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
         body: SafeArea(
@@ -196,6 +196,7 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
   }
 
   Widget _buildAppointmentCard(AppointmentEntity appointment, NoShowPrediction? prediction) {
+    final bool isEmergency = appointment.status == 'Emergency Request Pending';
     Color riskColor = Colors.grey;
     if (prediction != null) {
       if (prediction.probability > 70) riskColor = Colors.red;
@@ -207,70 +208,126 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        border: isEmergency ? Border.all(color: Colors.red, width: 2) : null,
+        boxShadow: [BoxShadow(color: isEmergency ? Colors.red.withOpacity(0.1) : Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Material(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20.r),
         child: InkWell(
           borderRadius: BorderRadius.circular(20.r),
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.receptionistPatientDetails,
-              arguments: {
-                'name': appointment.patientName,
-                'image': appointment.patientImage ?? 'assets/images/patient.jpeg',
-                'case': appointment.caseDescription,
-                'time': appointment.time,
-                'patientId': appointment.patientId,
-              },
-            );
-          },
+          onTap: () => _showAppointmentDetails(appointment),
           child: Padding(
             padding: EdgeInsets.all(16.r),
-            child: Row(
+            child: Column(
               children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-                  decoration: BoxDecoration(color: AppColors.primaryBlueSoft, borderRadius: BorderRadius.circular(14.r)),
-                  child: Text(appointment.time, style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.w900)),
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                      decoration: BoxDecoration(
+                        color: isEmergency ? Colors.red.withOpacity(0.1) : AppColors.primaryBlueSoft,
+                        borderRadius: BorderRadius.circular(14.r)
+                      ),
+                      child: Text(
+                        appointment.time, 
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: isEmergency ? Colors.red : AppColors.primaryBlue, 
+                          fontWeight: FontWeight.w900
+                        )
+                      ),
+                    ),
+                    SizedBox(width: 16.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(appointment.patientName, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                              if (isEmergency) ...[
+                                SizedBox(width: 8.w),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4.r)),
+                                  child: Text("URGENT", style: TextStyle(color: Colors.white, fontSize: 8.sp, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Text(appointment.caseDescription, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.more_vert, color: AppColors.textPlaceholder),
+                  ],
                 ),
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                if (isEmergency) ...[
+                  const Divider(),
+                  Row(
                     children: [
-                      Text(appointment.patientName, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                      Text(appointment.caseDescription, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
-                      if (prediction != null) ...[
-                        SizedBox(height: 4.h),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8.r,
-                              height: 8.r,
-                              decoration: BoxDecoration(color: riskColor, shape: BoxShape.circle),
-                            ),
-                            SizedBox(width: 6.w),
-                            Text(
-                              "${prediction.probability.toStringAsFixed(1)}% No-Show Risk",
-                              style: AppTextStyles.labelSmall.copyWith(color: riskColor, fontWeight: FontWeight.bold),
-                            ),
-                          ],
+                      Expanded(
+                        child: Text(
+                          "Reason: ${appointment.emergencyReason}",
+                          style: AppTextStyles.labelSmall.copyWith(color: Colors.red, fontWeight: FontWeight.bold),
                         ),
-                      ] else ...[
-                        SizedBox(height: 4.h),
-                        Text("Calculating risk...", style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
-                      ],
+                      ),
+                      TextButton(
+                        onPressed: () => _viewModel.updateAppointmentStatus(appointment.id, 'Confirmed'),
+                        child: const Text("Approve", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                      ),
+                      TextButton(
+                        onPressed: () => _viewModel.updateAppointmentStatus(appointment.id, 'Cancelled'),
+                        child: const Text("Reject", style: TextStyle(color: Colors.red)),
+                      ),
                     ],
                   ),
-                ),
-                Icon(Icons.arrow_forward_ios_rounded, size: 16.r, color: AppColors.textPlaceholder),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showAppointmentDetails(AppointmentEntity appointment) {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30.r))),
+      builder: (context) => Padding(
+        padding: EdgeInsets.all(24.r),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Appointment Details", style: AppTextStyles.titleLarge),
+            SizedBox(height: 20.h),
+            _detailRow("Patient", appointment.patientName),
+            _detailRow("Time", appointment.time),
+            _detailRow("Status", appointment.status),
+            if (appointment.isEmergency) ...[
+              const Divider(),
+              Text("Emergency Info", style: AppTextStyles.titleMedium.copyWith(color: Colors.red)),
+              _detailRow("Reason", appointment.emergencyReason ?? "N/A"),
+              _detailRow("Description", appointment.emergencyDescription ?? "N/A"),
+            ],
+            SizedBox(height: 30.h),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+          Text(value, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

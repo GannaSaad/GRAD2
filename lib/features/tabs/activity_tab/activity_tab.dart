@@ -239,13 +239,22 @@ class _ActivityTabState extends State<ActivityTab> with SingleTickerProviderStat
   }
 
   Widget _buildAppointmentCard(AppointmentEntity appointment, bool isPrevious) {
+    final bool isEmergency = appointment.status == 'Emergency Request Pending';
+
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        border: isEmergency ? Border.all(color: Colors.red, width: 1.5) : null,
+        boxShadow: [
+          BoxShadow(
+            color: isEmergency ? Colors.red.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,6 +282,33 @@ class _ActivityTabState extends State<ActivityTab> with SingleTickerProviderStat
               _buildInfoRow(Icons.access_time, appointment.time),
             ],
           ),
+          if (isEmergency) ...[
+            SizedBox(height: 12.h),
+            Container(
+              padding: EdgeInsets.all(12.r),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.report_problem, color: Colors.red, size: 14),
+                      SizedBox(width: 6.w),
+                      Text("Emergency Request", style: TextStyle(color: Colors.red, fontSize: 10.sp, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    "Reason: ${appointment.emergencyReason}",
+                    style: TextStyle(color: Colors.red[800], fontSize: 10.sp),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (!isPrevious) ...[
             const Divider(height: 32),
             Row(
@@ -312,11 +348,15 @@ class _ActivityTabState extends State<ActivityTab> with SingleTickerProviderStat
     Color color = AppColors.primaryBlue;
     if (status == 'Completed') color = AppColors.success;
     if (status == 'Cancelled') color = AppColors.error;
+    if (status == 'Emergency Request Pending') color = Colors.red;
     
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20.r)),
-      child: Text(status, style: AppTextStyles.labelSmall.copyWith(color: color, fontWeight: FontWeight.bold)),
+      child: Text(
+        status == 'Emergency Request Pending' ? 'Urgent Review' : status, 
+        style: AppTextStyles.labelSmall.copyWith(color: color, fontWeight: FontWeight.bold)
+      ),
     );
   }
 

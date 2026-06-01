@@ -19,7 +19,8 @@ import '../../../features/tabs/nurse_tabs/nurse_patient_details_screen.dart';
 import '../../../features/tabs/admin_tabs/admin_doctor_detail_screen.dart';
 import '../../../features/onboarding/onboarding_screen.dart';
 import '../../../features/tabs/receptionist_tabs/receptionist_patient_details_screen.dart';
-import '../../../features/tabs/admin_tabs/add_doctor_screen.dart'; // Added this line
+import '../../../features/tabs/admin_tabs/add_doctor_screen.dart';
+import '../../../features/tabs/admin_tabs/add_supplier_screen.dart';
 import '../../../widgets/widgets/auth_gate.dart';
 import 'app_routes.dart';
 
@@ -83,8 +84,10 @@ class AppRouter {
           time: args['time']!,
           patientId: args['patientId'],
         ));
-      case AppRoutes.addDoctor: // Added this line
+      case AppRoutes.addDoctor:
         return MaterialPageRoute(builder: (_) => const AddDoctorScreen());
+      case AppRoutes.addSupplier:
+        return MaterialPageRoute(builder: (_) => const AddSupplierScreen());
       default:
         return MaterialPageRoute(builder: (_) => LoginScreen());
     }

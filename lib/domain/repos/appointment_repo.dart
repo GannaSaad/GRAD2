@@ -10,6 +10,8 @@ abstract class AppointmentRepo {
   Future<void> completeAppointment(String appointmentId);
   Future<void> rescheduleAppointment(String appointmentId, DateTime newDate, String newTime);
   Future<List<String>> getBookedSlots(String doctorId, DateTime date);
+  Future<void> updateAppointmentStatus(String appointmentId, String status);
+  Future<void> resolveEmergency(String appointmentId, String status, bool isEmergency);
   
   // Added for doctor availability management
   Future<void> updateAvailability(AvailabilityEntity availability);

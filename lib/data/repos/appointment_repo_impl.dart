@@ -55,6 +55,16 @@ class AppointmentRepoImpl implements AppointmentRepo {
   }
 
   @override
+  Future<void> updateAppointmentStatus(String appointmentId, String status) {
+    return _remoteDataSource.updateAppointmentStatus(appointmentId, status);
+  }
+
+  @override
+  Future<void> resolveEmergency(String appointmentId, String status, bool isEmergency) {
+    return _remoteDataSource.resolveEmergency(appointmentId, status, isEmergency);
+  }
+
+  @override
   Future<List<String>> getBookedSlots(String doctorId, DateTime date) {
     return _remoteDataSource.getBookedSlots(doctorId, date);
   }

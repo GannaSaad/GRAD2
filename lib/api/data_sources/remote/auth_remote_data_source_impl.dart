@@ -6,6 +6,7 @@ import 'package:injectable/injectable.dart';
 
 import 'package:dentex_clean/data/data_sources/remote/auth_remote_data_source.dart';
 import 'package:dentex_clean/data/models/user_model.dart';
+import 'package:dentex_clean/data/models/supplier_model.dart';
 
 @Injectable(as: AuthRemoteDataSource)
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -15,13 +16,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   AuthRemoteDataSourceImpl(this._firebaseAuth, this._firestore);
 
+  // Helper getters to ensure we always use the current default app instances
+  FirebaseAuth get auth => FirebaseAuth.instance;
+  FirebaseFirestore get firestore => FirebaseFirestore.instance;
+
   @override
   Future<UserModel> login({
     required String email,
     required String password,
   }) async {
     try {
-      final credential = await _firebaseAuth.signInWithEmailAndPassword(
+      final credential = await auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -47,12 +52,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = await _firebaseAuth.signInWithCredential(credential);
+      final UserCredential userCredential = await auth.signInWithCredential(credential);
       final User? firebaseUser = userCredential.user;
 
       if (firebaseUser == null) throw Exception("Firebase authentication failed.");
 
-      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+      final doc = await firestore.collection('users').doc(firebaseUser.uid).get();
       if (!doc.exists) {
         final userData = {
           'uid': firebaseUser.uid,
@@ -66,7 +71,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'allergies': '',
           'medicalInsurance': '',
         };
-        await _firestore.collection('users').doc(firebaseUser.uid).set(userData);
+        await firestore.collection('users').doc(firebaseUser.uid).set(userData);
       }
 
       return await getUserData(firebaseUser.uid);
@@ -91,29 +96,34 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? certificates,
     String? allergies,
     String? medicalInsurance,
+    String? companyId,
+    String? address,
   }) async {
     FirebaseApp? secondaryApp;
     try {
+      final currentUser = auth.currentUser;
+      bool useSecondaryApp = currentUser != null;
+
       UserCredential credential;
-      final currentUser = _firebaseAuth.currentUser;
-      
-      bool useSecondaryApp = currentUser != null && (
-        role.toLowerCase() == 'receptionist' || 
-        role.toLowerCase() == 'assistant' || 
-        role.toLowerCase() == 'doctor'
-      );
+      FirebaseFirestore firestoreToUse = firestore;
 
       if (useSecondaryApp) {
+        // Use a unique name for each secondary app instance to avoid conflicts
+        final String appName = 'TempReg_${DateTime.now().millisecondsSinceEpoch}';
         secondaryApp = await Firebase.initializeApp(
-          name: 'SecondaryApp_${DateTime.now().millisecondsSinceEpoch}',
+          name: appName,
           options: Firebase.app().options,
         );
+        
         credential = await FirebaseAuth.instanceFor(app: secondaryApp).createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
+        // Use the Firestore instance from the secondary app to write the new user's profile
+        // This ensures the write is authenticated as the new user
+        firestoreToUse = FirebaseFirestore.instanceFor(app: secondaryApp);
       } else {
-        credential = await _firebaseAuth.createUserWithEmailAndPassword(
+        credential = await auth.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
@@ -121,17 +131,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       final firebaseUser = credential.user!;
       final uid = firebaseUser.uid;
-
       final normalizedRole = role.trim().toLowerCase();
-      final userData = {
+
+      final Map<String, dynamic> userData = {
         'uid': uid,
         'email': email,
         'fullName': fullName,
         'age': age,
-        'role': role,
+        'role': normalizedRole,
         'phoneNumber': phoneNumber,
         'gender': gender,
         'createdAt': FieldValue.serverTimestamp(),
+        'companyId': companyId,
+        'address': address,
       };
 
       if (normalizedRole == 'doctor') {
@@ -150,56 +162,57 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         }
       }
 
-      await _firestore.collection('users').doc(uid).set(userData);
+      // Write the user profile doc.
+      await firestoreToUse.collection('users').doc(uid).set(userData);
+
+      if (normalizedRole == 'supplier') {
+        await firestoreToUse.collection('suppliers').doc(uid).set({
+          'name': fullName,
+          'companyId': companyId ?? 'Unknown',
+          'email': email,
+          'phone': phoneNumber,
+          'address': address ?? '',
+        });
+      }
 
       if (fullName.isNotEmpty) {
         await firebaseUser.updateDisplayName(fullName);
       }
 
-      return await getUserData(uid);
+      // Return constructed model directly to avoid immediate READ permission checks
+      return UserModel.fromFirestore(userData, uid);
+      
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseAuthException(e);
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw Exception('Firestore Permission Denied: You do not have authority to create this profile document. Please check security rules.');
+      }
+      throw Exception('Firestore Error: ${e.message}');
     } catch (e) {
-      throw Exception('Registration failed: ${e.toString()}');
+      throw Exception('Registration Failed: ${e.toString().replaceAll('Exception: ', '')}');
     } finally {
       if (secondaryApp != null) {
-        await secondaryApp.delete();
+        // Sign out to clean up session
+        await FirebaseAuth.instanceFor(app: secondaryApp).signOut();
+        // Allow a small delay for background Firestore cleanup before the app context might get lost,
+        // but we avoid calling delete() here to prevent the "FirebaseApp was deleted" error in listeners.
       }
     }
   }
 
   @override
   Future<UserModel> getUserData(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
+    final doc = await firestore.collection('users').doc(uid).get();
     if (doc.exists) {
-      final data = doc.data()!;
-      return UserModel(
-        id: uid,
-        email: data['email'],
-        fullName: data['fullName'],
-        age: data['age'],
-        role: data['role'],
-        phoneNumber: data['phoneNumber'],
-        gender: data['gender'],
-        speciality: data['speciality'],
-        rank: data['rank'],
-        experience: data['experience'],
-        education: data['education'],
-        certificates: data['certificates'],
-        allergies: data['allergies'],
-        medicalInsurance: data['medicalInsurance'],
-        assignedDoctorId: data['assignedDoctorId'],
-        assignedDoctorName: data['assignedDoctorName'],
-        totalToPay: (data['totalToPay'] as num?)?.toDouble(),
-        totalPaid: (data['totalPaid'] as num?)?.toDouble(),
-      );
+      return UserModel.fromFirestore(doc.data()!, uid);
     }
-    return UserModel(id: uid, fullName: "New Patient", role: "patient", totalToPay: 0, totalPaid: 0);
+    return UserModel(id: uid, fullName: "New User", role: "patient");
   }
 
   @override
   Future<void> updatePatientFinancials(String uid, double totalToPay, double totalPaid) async {
-    await _firestore.collection('users').doc(uid).set({
+    await firestore.collection('users').doc(uid).set({
       'totalToPay': totalToPay,
       'totalPaid': totalPaid,
     }, SetOptions(merge: true));
@@ -212,12 +225,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String phoneNumber,
   }) async {
     try {
-      await _firestore.collection('users').doc(uid).update({
+      await firestore.collection('users').doc(uid).update({
         'fullName': fullName,
         'phoneNumber': phoneNumber,
       });
       
-      final currentUser = _firebaseAuth.currentUser;
+      final currentUser = auth.currentUser;
       if (currentUser != null && currentUser.uid == uid) {
         await currentUser.updateDisplayName(fullName);
       }
@@ -232,7 +245,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String newPassword,
   }) async {
     try {
-      User? user = _firebaseAuth.currentUser;
+      User? user = auth.currentUser;
       if (user == null || user.email == null) throw Exception("User session not found.");
 
       AuthCredential credential = EmailAuthProvider.credential(
@@ -252,35 +265,23 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> deleteUser(String uid) async {
     try {
-      await _firestore.collection('users').doc(uid).delete();
+      await firestore.collection('users').doc(uid).delete();
+      await firestore.collection('suppliers').doc(uid).delete();
     } catch (e) {
-      throw Exception('Failed to delete doctor record: ${e.toString()}');
+      throw Exception('Failed to delete user record: ${e.toString()}');
     }
   }
 
   @override
   Future<List<UserModel>> getAllDoctors() async {
     try {
-      final querySnapshot = await _firestore
+      final querySnapshot = await firestore
           .collection('users')
           .where('role', isEqualTo: 'doctor')
           .get();
 
       return querySnapshot.docs
-          .map((doc) => UserModel(
-                id: doc.id,
-                email: doc.data()['email'],
-                fullName: doc.data()['fullName'],
-                age: doc.data()['age'],
-                role: doc.data()['role'],
-                phoneNumber: doc.data()['phoneNumber'],
-                gender: doc.data()['gender'],
-                speciality: doc.data()['speciality'],
-                rank: doc.data()['rank'],
-                experience: doc.data()['experience'],
-                education: doc.data()['education'],
-                certificates: doc.data()['certificates'],
-              ))
+          .map((doc) => UserModel.fromFirestore(doc.data(), doc.id))
           .toList();
     } catch (e) {
       throw Exception('Failed to fetch doctors: ${e.toString()}');
@@ -290,25 +291,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<List<UserModel>> getAllPatients() async {
     try {
-      final querySnapshot = await _firestore
+      final querySnapshot = await firestore
           .collection('users')
           .where('role', isEqualTo: 'patient')
           .get();
 
       return querySnapshot.docs
-          .map((doc) => UserModel(
-                id: doc.id,
-                email: doc.data()['email'],
-                fullName: doc.data()['fullName'],
-                age: doc.data()['age'],
-                role: doc.data()['role'],
-                phoneNumber: doc.data()['phoneNumber'],
-                gender: doc.data()['gender'],
-                allergies: doc.data()['allergies'],
-                medicalInsurance: doc.data()['medicalInsurance'],
-                assignedDoctorId: doc.data()['assignedDoctorId'],
-                assignedDoctorName: doc.data()['assignedDoctorName'],
-              ))
+          .map((doc) => UserModel.fromFirestore(doc.data(), doc.id))
           .toList();
     } catch (e) {
       throw Exception('Failed to fetch patients: ${e.toString()}');
@@ -316,26 +305,46 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<List<UserModel>> getAllSuppliers() async {
+    try {
+      final querySnapshot = await firestore
+          .collection('users')
+          .where('role', isEqualTo: 'supplier')
+          .get();
+
+      return querySnapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to fetch suppliers: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<void> addSupplier(SupplierModel supplier) async {
+    await firestore.collection('suppliers').doc(supplier.id).set(supplier.toFirestore());
+  }
+
+  @override
+  Future<List<SupplierModel>> getSuppliersByCompany(String companyId) async {
+    final querySnapshot = await firestore
+        .collection('suppliers')
+        .where('companyId', isEqualTo: companyId)
+        .get();
+
+    return querySnapshot.docs
+        .map((doc) => SupplierModel.fromFirestore(doc.data(), doc.id))
+        .toList();
+  }
+
+  @override
   Stream<List<UserModel>> getDoctorsStream() {
-    return _firestore
+    return firestore
         .collection('users')
         .where('role', isEqualTo: 'doctor')
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => UserModel(
-                  id: doc.id,
-                  email: doc.data()['email'],
-                  fullName: doc.data()['fullName'],
-                  age: doc.data()['age'],
-                  role: doc.data()['role'],
-                  phoneNumber: doc.data()['phoneNumber'],
-                  gender: doc.data()['gender'],
-                  speciality: doc.data()['speciality'],
-                  rank: doc.data()['rank'],
-                  experience: doc.data()['experience'],
-                  education: doc.data()['education'],
-                  certificates: doc.data()['certificates'],
-                ))
+            .map((doc) => UserModel.fromFirestore(doc.data(), doc.id))
             .toList());
   }
 

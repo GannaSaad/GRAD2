@@ -24,6 +24,10 @@ import '../tabs/admin_tabs/admin_home_tab.dart';
 import '../tabs/admin_tabs/admin_patients_tab.dart';
 import '../tabs/admin_tabs/doctor_support_tab.dart';
 import '../tabs/admin_tabs/patient_support_tab.dart';
+import '../tabs/supplier_tabs/supplier_home_tab.dart';
+import '../tabs/supplier_tabs/supplier_requests_tab.dart';
+import '../tabs/supplier_tabs/supplier_history_tab.dart';
+import '../tabs/supplier_tabs/supplier_profile_tab.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -73,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _getBody(String role) {
-    final normalizedRole = role.toLowerCase();
+    final normalizedRole = role.trim().toLowerCase();
     
     if (normalizedRole == 'admin') {
       switch (_currentIndex) {
@@ -105,9 +109,17 @@ class _HomeScreenState extends State<HomeScreen> {
         case 0: return const DoctorHomeTab();
         case 1: return const PatientsTab();
         case 2: return const AvailabilityTab();
-        case 3: return const DoctorChatBotTab(); // Corrected: Using DoctorChatBotTab here
+        case 3: return const DoctorChatBotTab();
         case 4: return const ProfileTab();
         default: return const DoctorHomeTab();
+      }
+    } else if (normalizedRole == 'supplier') {
+      switch (_currentIndex) {
+        case 0: return const SupplierHomeTab();
+        case 1: return const SupplierRequestsTab();
+        case 2: return const SupplierHistoryTab();
+        case 3: return const SupplierProfileTab();
+        default: return const SupplierHomeTab();
       }
     } else {
       if (_showDoctorsListing) {
@@ -133,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<BottomNavigationBarItem> _getNavItems(String role) {
-    final normalizedRole = role.toLowerCase();
+    final normalizedRole = role.trim().toLowerCase();
     
     if (normalizedRole == 'admin') {
       return [
@@ -167,6 +179,13 @@ class _HomeScreenState extends State<HomeScreen> {
           activeIcon: _buildShagyIcon(true),
           label: 'Shagy',
         ),
+        const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+      ];
+    } else if (normalizedRole == 'supplier') {
+      return [
+        const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+        const BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment), label: 'Requests'),
+        const BottomNavigationBarItem(icon: Icon(Icons.history_outlined), activeIcon: Icon(Icons.history), label: 'History'),
         const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
       ];
     } else {

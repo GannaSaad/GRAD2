@@ -24,6 +24,10 @@ class RegisterViewModel extends Cubit<AuthState> {
   String selectedRole = 'patient';
   String selectedGender = 'male';
 
+  // Supplier/Company specific
+  String? selectedCompany;
+  final addressController = TextEditingController();
+
   // Doctor specific fields
   final specialityController = TextEditingController();
   final rankController = TextEditingController();
@@ -42,7 +46,7 @@ class RegisterViewModel extends Cubit<AuthState> {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         certificateFile = File(image.path);
-        emit(AuthInitial()); // Trigger UI update to show the selected file
+        emit(AuthInitial()); 
       }
     } catch (e) {
       emit(AuthFailure("Failed to pick image: ${e.toString()}"));
@@ -59,12 +63,12 @@ class RegisterViewModel extends Cubit<AuthState> {
       emit(AuthLoading());
       try {
         final user = await _registerUseCase.execute(
-          email: emailController.text,
+          email: emailController.text.trim(),
           password: passwordController.text,
-          name: nameController.text,
-          age: ageController.text,
+          name: nameController.text.trim(),
+          age: ageController.text.trim(),
           role: selectedRole,
-          phoneNumber: phoneController.text,
+          phoneNumber: phoneController.text.trim(),
           gender: selectedGender,
           speciality: selectedRole == 'doctor' ? specialityController.text : null,
           rank: selectedRole == 'doctor' ? rankController.text : null,
@@ -73,6 +77,8 @@ class RegisterViewModel extends Cubit<AuthState> {
           certificates: selectedRole == 'doctor' ? "verified_by_it" : null,
           allergies: selectedRole == 'patient' ? allergiesController.text : null,
           medicalInsurance: selectedRole == 'patient' ? medicalInsuranceController.text : null,
+          companyId: selectedRole == 'supplier' ? selectedCompany : null,
+          address: selectedRole == 'supplier' ? addressController.text : null,
         );
         emit(AuthSuccess(user));
       } catch (e) {
@@ -95,6 +101,7 @@ class RegisterViewModel extends Cubit<AuthState> {
     educationController.dispose();
     allergiesController.dispose();
     medicalInsuranceController.dispose();
+    addressController.dispose();
     return super.close();
   }
 }

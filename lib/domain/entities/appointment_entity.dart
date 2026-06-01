@@ -8,12 +8,15 @@ class AppointmentEntity extends Equatable {
   final String patientName;
   final DateTime date;
   final String time;
-  final String status; // 'Pending', 'Confirmed', 'Cancelled', 'Completed'
+  final String status; // 'Pending', 'Confirmed', 'Cancelled', 'Completed', 'Emergency Request Pending'
   final String caseDescription;
   final String clinicName;
   final String? patientImage;
   final String? doctorImage;
   final bool isReceptionistBooking;
+  final bool isEmergency;
+  final String? emergencyReason;
+  final String? emergencyDescription;
 
   const AppointmentEntity({
     required this.id,
@@ -29,6 +32,9 @@ class AppointmentEntity extends Equatable {
     this.patientImage,
     this.doctorImage,
     this.isReceptionistBooking = false,
+    this.isEmergency = false,
+    this.emergencyReason,
+    this.emergencyDescription,
   });
 
   @override
@@ -44,5 +50,31 @@ class AppointmentEntity extends Equatable {
         caseDescription,
         clinicName,
         isReceptionistBooking,
+        isEmergency,
+        emergencyReason,
+        emergencyDescription,
       ];
+
+  AppointmentEntity copyWith({
+    String? status,
+  }) {
+    return AppointmentEntity(
+      id: id,
+      doctorId: doctorId,
+      patientId: patientId,
+      doctorName: doctorName,
+      patientName: patientName,
+      date: date,
+      time: time,
+      status: status ?? this.status,
+      caseDescription: caseDescription,
+      clinicName: clinicName,
+      patientImage: patientImage,
+      doctorImage: doctorImage,
+      isReceptionistBooking: isReceptionistBooking,
+      isEmergency: isEmergency,
+      emergencyReason: emergencyReason,
+      emergencyDescription: emergencyDescription,
+    );
+  }
 }

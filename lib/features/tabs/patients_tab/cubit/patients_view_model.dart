@@ -68,8 +68,7 @@ class PatientsViewModel extends Cubit<PatientsState> {
 
   void _loadPredictionsForPatients(List<AppointmentEntity> appointments) async {
     final Map<String, NoShowPrediction> newPredictions = {};
-    // This is the corrected line. It now safely filters out any null or empty patient IDs.
-    final Set<String> uniquePatientIds = appointments.map((a) => a.patientId).where((id) => id != null && id.isNotEmpty).cast<String>().toSet();
+    final Set<String> uniquePatientIds = appointments.map((a) => a.patientId).where((id) => id.isNotEmpty).cast<String>().toSet();
     
     final List<Future> predictionFutures = [];
 
@@ -90,10 +89,8 @@ class PatientsViewModel extends Cubit<PatientsState> {
       predictionFutures.add(future);
     }
 
-    // Wait for all prediction fetches to complete.
     await Future.wait(predictionFutures);
 
-    // Emit a single success state with all the fetched predictions.
     if (!isClosed) {
       final currentState = state;
       if (currentState is PatientsSuccess) {
@@ -113,6 +110,22 @@ class PatientsViewModel extends Cubit<PatientsState> {
   Future<void> markAsComplete(String id) async {
     try {
       await _completeAppointmentUseCase.call(id);
+    } catch (e) {
+      if (!isClosed) emit(PatientsFailure(e.toString()));
+    }
+  }
+
+  Future<void> updateAppointmentStatus(String requestId, String status) async {
+    try {
+      await _appointmentRepo.updateAppointmentStatus(requestId, status);
+    } catch (e) {
+      if (!isClosed) emit(PatientsFailure(e.toString()));
+    }
+  }
+
+  Future<void> resolveEmergency(String requestId, String status, bool isEmergency) async {
+    try {
+      await _appointmentRepo.resolveEmergency(requestId, status, isEmergency);
     } catch (e) {
       if (!isClosed) emit(PatientsFailure(e.toString()));
     }

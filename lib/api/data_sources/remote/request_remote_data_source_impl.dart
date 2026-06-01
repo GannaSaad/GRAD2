@@ -22,6 +22,17 @@ class RequestRemoteDataSourceImpl implements RequestRemoteDataSource {
   }
 
   @override
+  Stream<List<RequestModel>> getAllRequests() {
+    return _firestore
+        .collection('supplies_requests')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+        .map((doc) => RequestModel.fromFirestore(doc.data(), doc.id))
+        .toList());
+  }
+
+  @override
   Future<void> addRequest(RequestModel request) async {
     try {
       await _firestore

@@ -18,6 +18,13 @@ class RequestRepoImpl implements RequestRepo {
   }
 
   @override
+  Stream<List<RequestEntity>> getAllRequests() {
+    return _remoteDataSource.getAllRequests().map(
+          (list) => list.map((model) => model.toEntity()).toList(),
+    );
+  }
+
+  @override
   Future<void> addRequest(RequestEntity request) {
     return _remoteDataSource.addRequest(RequestModel.fromEntity(request));
   }

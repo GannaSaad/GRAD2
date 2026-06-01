@@ -60,6 +60,9 @@ class RequestViewModel extends Cubit<RequestState> {
     required String itemName,
     required int quantity,
     required String supplier,
+    String? supplierId,
+    String? notes,
+    DateTime? neededBy,
   }) async {
     final user = getIt<AuthCubit>().currentUser;
     if (user == null || user.assignedDoctorId == null) return;
@@ -69,10 +72,14 @@ class RequestViewModel extends Cubit<RequestState> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         itemName: itemName,
         quantity: quantity,
-        supplier: supplier,
+        supplier: supplier, // Company Name
+        supplierId: supplierId, // Optional: specific person UID
         status: 'Pending',
         date: DateTime.now(),
         doctorId: user.assignedDoctorId!,
+        clinicName: user.assignedDoctorName ?? "Clinic",
+        notes: notes,
+        neededBy: neededBy,
       );
       
       await _addRequestUseCase.call(request);
