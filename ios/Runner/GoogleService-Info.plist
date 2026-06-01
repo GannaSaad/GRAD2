@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>40233588836-kcf5r8oitvu5n6g9edmua79vqvc37d2u.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.40233588836-kcf5r8oitvu5n6g9edmua79vqvc37d2u</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBhdgA3QdYEvNh2LyntLVXba1l7IEiLIYk</string>
+	<key>GCM_SENDER_ID</key>
+	<string>40233588836</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.dentexClean</string>
+	<key>PROJECT_ID</key>
+	<string>dentex-clean</string>
+	<key>STORAGE_BUCKET</key>
+	<string>dentex-clean.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:40233588836:ios:3fbf476fb04b2930ac6771</string>
+</dict>
+</plist>

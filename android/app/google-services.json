@@ -12,7 +12,20 @@
           "package_name": "com.example.dentex_clean"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "40233588836-lnm5hanl8c9lg80bdv99bkuqasg5hurd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.dentex_clean",
+            "certificate_hash": "6d2c3f6610ce05b230a098a326e851ae4b301ce4"
+          }
+        },
+        {
+          "client_id": "40233588836-a23vpqd7mj1fsi6l7m1ee8bbho3bfp46.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyASx7Siu9CBckt0cTvqEFRGK4oThu8mQjc"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "40233588836-a23vpqd7mj1fsi6l7m1ee8bbho3bfp46.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "40233588836-kcf5r8oitvu5n6g9edmua79vqvc37d2u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.dentexClean"
+              }
+            }
+          ]
         }
       }
     }

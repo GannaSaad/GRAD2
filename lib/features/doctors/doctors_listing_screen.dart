@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../api/config/di/di.dart';
+import '../../../core/core/utils/app_assets.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import '../../../domain/entities/user_entity.dart';
+import 'cubit/doctors_listing_view_model.dart';
 import 'doctor_profile_screen.dart';
 
 class Doctor {
   final String id;
   final String name;
+  final String rank;
   final String specialty;
   final String bio;
   final String image;
@@ -14,11 +20,23 @@ class Doctor {
   final String rating;
   final String reviews;
   final String clinic;
+  final String location;
+  final double latitude;
+  final double longitude;
+  final String availability;
+  final List<String> education;
+  final List<String> languages;
+  final List<String> certifications;
+  final List<String> affiliations;
+  final List<String> awards;
+  final List<String> researchRoles;
   bool isFavorite;
+  double? distance;
 
   Doctor({
     required this.id,
     required this.name,
+    required this.rank,
     required this.specialty,
     required this.bio,
     required this.image,
@@ -26,8 +44,67 @@ class Doctor {
     required this.rating,
     required this.reviews,
     required this.clinic,
+    required this.location,
+    required this.latitude,
+    required this.longitude,
+    required this.availability,
+    required this.education,
+    required this.languages,
+    required this.certifications,
+    required this.affiliations,
+    this.awards = const [],
+    this.researchRoles = const [],
     this.isFavorite = false,
+    this.distance,
   });
+
+  factory Doctor.fromEntity(UserEntity entity, int index) {
+    final name = entity.fullName ?? "Doctor";
+    final ranks = ["Professor & Consultant", "Senior Specialist", "Consultant Surgeon", "Lead Orthodontist", "Clinical Director"];
+    final locations = [
+      {"name": "Maadi, Cairo", "lat": 29.9602, "lng": 31.2569},
+      {"name": "Zamalek, Cairo", "lat": 30.0631, "lng": 31.2209},
+      {"name": "Sheikh Zayed, Giza", "lat": 30.0481, "lng": 30.9936},
+      {"name": "New Cairo, Cairo", "lat": 30.0299, "lng": 31.4913},
+    ];
+    final loc = locations[index % locations.length];
+
+    String imagePath = "assets/images/doctor.jpg";
+    if (name.toLowerCase().contains("maha") || name.toLowerCase().contains("shahd") || name.toLowerCase().contains("sara") || name.toLowerCase().contains("layla")) {
+      final femaleImages = ["assets/images/doctor3.png", "assets/images/doctor4.png", "assets/images/doctor5.png"];
+      imagePath = femaleImages[index % femaleImages.length];
+    } else {
+      final maleImages = ["assets/images/doctor.jpg", "assets/images/doctor1.png", "assets/images/doctor2.jpg", "assets/images/doctor6.jpg", "assets/images/doctor7.jpg"];
+      imagePath = maleImages[index % maleImages.length];
+    }
+    
+    // UPDATED SPECIALTY DEFAULT
+    String specialty = entity.speciality ?? "Oral Surgery & Implantology";
+    if (specialty.toLowerCase() == "dermatology") {
+      specialty = "Oral Surgery & Implantology";
+    }
+
+    return Doctor(
+      id: entity.uid,
+      name: name,
+      rank: ranks[index % ranks.length],
+      specialty: specialty,
+      bio: "Senior dental specialist dedicated to providing elite clinical care at Dentix.",
+      image: imagePath,
+      experience: "${10 + (index % 10)} years",
+      rating: (4.5 + (index % 5) / 10).toStringAsFixed(1),
+      reviews: (80 + index * 5).toString(),
+      clinic: "Dentix Specialized Clinic",
+      location: loc["name"] as String,
+      latitude: loc["lat"] as double,
+      longitude: loc["lng"] as double,
+      availability: index % 2 == 0 ? "Available Today" : "Next: Mon",
+      education: ["Specialized Degree in Dentistry"],
+      languages: ["Arabic", "English"],
+      certifications: ["Certified by Medical Board"],
+      affiliations: ["Dentix Medical Network"],
+    );
+  }
 }
 
 class DoctorsListingScreen extends StatefulWidget {
@@ -39,310 +116,152 @@ class DoctorsListingScreen extends StatefulWidget {
 }
 
 class _DoctorsListingScreenState extends State<DoctorsListingScreen> {
-  String selectedSort = 'Default';
-  String searchQuery = '';
+  final DoctorsListingViewModel _viewModel = getIt<DoctorsListingViewModel>();
   bool isSearching = false;
 
-  final List<Doctor> doctors = [
-    Doctor(
-      id: "1",
-      name: "Dr. Hazem EL Beltagy, Ph.D.",
-      specialty: "Implantology & Smile Design",
-      experience: "18 years",
-      rating: "4.9",
-      reviews: "96",
-      clinic: "Cairo University Dental Center – Cairo",
-      bio: "Senior dental implant specialist with extensive experience in advanced implant procedures, bone grafting, and full-mouth rehabilitation, known for precision-driven treatment planning and long-term implant success.",
-      image: "assets/images/doctor.jpg",
-    ),
-    Doctor(
-      id: "2",
-      name: "Dr. Michael Davidson, M.D.",
-      specialty: "Solar Dermatology",
-      experience: "14 years",
-      rating: "4.8",
-      reviews: "89",
-      clinic: "Maadi Skin & Laser Clinic – Maadi",
-      bio: "Board-certified dermatologist focused on skin health, sun damage prevention, and treatment of pigment disorders, with strong emphasis on patient education and long-term skin care.",
-      image: "assets/images/doctor1.png",
-    ),
-    Doctor(
-      id: "3",
-      name: "Dr. Olivia Turner, M.D.",
-      specialty: "Dermato-Endocrinology",
-      experience: "12 years",
-      rating: "4.7",
-      reviews: "156",
-      clinic: "Zamalek Medical Hub – Zamalek",
-      bio: "Specialist in hormonal-related skin conditions including acne, hair loss, and metabolic skin disorders, combining dermatology and endocrinology for root-cause treatments.",
-      image: "assets/images/doctor3.png",
-    ),
-    Doctor(
-      id: "4",
-      name: "Dr. Sophia Martinez, Ph.D.",
-      specialty: "Cosmetic Bioengineering",
-      experience: "10 years",
-      rating: "4.8",
-      reviews: "102",
-      clinic: "Sheikh Zayed Aesthetic Clinic – Sheikh Zayed",
-      bio: "Expert in aesthetic treatments and skin regeneration technologies, focusing on non-invasive cosmetic solutions, skin rejuvenation, and advanced bioengineered therapies.",
-      image: "assets/images/doctor4.png",
-    ),
-    Doctor(
-      id: "5",
-      name: "Dr. Ahmed El-Sherif, Ph.D.",
-      specialty: "Oral & Maxillofacial Surgery",
-      experience: "20 years",
-      rating: "4.9",
-      reviews: "141",
-      clinic: "Nasr City Oral Surgery Center – Nasr City",
-      bio: "Highly experienced oral surgeon specializing in complex extractions, jaw surgery, and facial trauma cases, with a strong focus on precision and patient safety.",
-      image: "assets/images/doctor5.png",
-    ),
-    Doctor(
-      id: "6",
-      name: "Dr. Mariam Hassan, M.D.",
-      specialty: "Periodontology",
-      experience: "13 years",
-      rating: "4.8",
-      reviews: "96",
-      clinic: "Heliopolis Dental Clinic – Heliopolis",
-      bio: "Gum disease specialist with extensive experience in periodontal treatments, gum surgery, and oral health preservation.",
-      image: "assets/images/doctor6.jpg",
-    ),
-    Doctor(
-      id: "7",
-      name: "Dr. Youssef Abdelrahman, M.D.",
-      specialty: "Prosthodontics",
-      experience: "11 years",
-      rating: "4.7",
-      reviews: "84",
-      clinic: "Dokki Advanced Dental Care – Dokki",
-      bio: "Expert in crowns, bridges, veneers, and full smile rehabilitation, combining functional restoration with natural aesthetics.",
-      image: "assets/images/doctor7.jpg",
-    ),
-    Doctor(
-      id: "8",
-      name: "Dr. Lina Fathy, Ph.D.",
-      specialty: "Pediatric Dentistry",
-      experience: "9 years",
-      rating: "4.8",
-      reviews: "118",
-      clinic: "New Cairo Kids Dental Center – New Cairo",
-      bio: "Dedicated pediatric dentist focused on preventive care and creating a comfortable, positive dental experience for children.",
-      image: "assets/images/doctor3.png",
-    ),
-  ];
-
-  List<Doctor> get filteredDoctors {
-    List<Doctor> list = List.from(doctors);
-    
-    if (searchQuery.isNotEmpty) {
-      list = list.where((d) => d.name.toLowerCase().contains(searchQuery.toLowerCase()) || d.specialty.toLowerCase().contains(searchQuery.toLowerCase())).toList();
-    }
-
-    if (selectedSort == 'Favorites') {
-      list = list.where((d) => d.isFavorite).toList();
-    }
-
-    if (selectedSort == 'A-Z') {
-      list.sort((a, b) => a.name.compareTo(b.name));
-    }
-    
-    return list;
+  @override
+  void initState() {
+    super.initState();
+    _viewModel.getAllDoctors();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: !widget.isInsideNavbar,
-        leading: widget.isInsideNavbar 
-            ? null 
-            : IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-                onPressed: () => Navigator.pop(context),
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: !widget.isInsideNavbar,
+          leading: widget.isInsideNavbar 
+              ? null 
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
+                  onPressed: () => Navigator.pop(context),
+                ),
+          title: isSearching 
+              ? TextField(
+                  autofocus: true,
+                  style: AppTextStyles.bodyLarge,
+                  decoration: const InputDecoration(hintText: "Search doctor...", border: InputBorder.none),
+                  onChanged: (val) => _viewModel.searchDoctors(val),
+                )
+              : Text("Doctors", style: AppTextStyles.titleLarge),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: Icon(isSearching ? Icons.close : Icons.search, color: AppColors.textPrimary),
+              onPressed: () => setState(() {
+                isSearching = !isSearching;
+                if (!isSearching) _viewModel.searchDoctors('');
+              }),
+            ),
+          ],
+        ),
+        body: BlocListener<DoctorsListingViewModel, DoctorsListingState>(
+          listener: (context, state) {
+            if (state is DoctorsListingFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+          child: Column(
+            children: [
+              _buildSortAndFilterRow(context),
+              Expanded(
+                child: BlocBuilder<DoctorsListingViewModel, DoctorsListingState>(
+                  builder: (context, state) {
+                    if (state is DoctorsListingLoading) {
+                      return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
+                    }
+                    
+                    final List<Doctor> currentDoctors = (state is DoctorsListingSuccess) ? state.doctors : [];
+
+                    if (currentDoctors.isEmpty && state is DoctorsListingSuccess) {
+                      return Center(child: Text("No doctors found", style: AppTextStyles.bodyMedium));
+                    }
+
+                    return ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: currentDoctors.length,
+                      itemBuilder: (context, index) {
+                        return _buildDoctorCard(context, currentDoctors[index]);
+                      },
+                    );
+                  },
+                ),
               ),
-        title: isSearching 
-            ? TextField(
-                autofocus: true,
-                decoration: const InputDecoration(hintText: "Search doctor...", border: InputBorder.none),
-                onChanged: (val) => setState(() => searchQuery = val),
-              )
-            : Text("Doctors", style: AppTextStyles.titleLarge),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(isSearching ? Icons.close : Icons.search, color: AppColors.textPrimary),
-            onPressed: () => setState(() {
-              isSearching = !isSearching;
-              if (!isSearching) searchQuery = '';
-            }),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.filter_list, color: AppColors.textPrimary),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildSortAndFilterRow(),
-          Expanded(
-            child: filteredDoctors.isEmpty 
-                ? Center(child: Text("No doctors found", style: AppTextStyles.bodyMedium))
-                : ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: filteredDoctors.length,
-                    itemBuilder: (context, index) {
-                      return _buildDoctorCard(filteredDoctors[index]);
-                    },
-                  ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildSortAndFilterRow() {
+  Widget _buildSortAndFilterRow(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
       child: Row(
         children: [
+          Padding(
+            padding: EdgeInsets.only(left: 12.w),
+            child: Image.asset(AppImages.dentexLogo, height: 30.h, color: AppColors.primaryBlue),
+          ),
+          SizedBox(width: 12.w),
           Text("Sort By", style: AppTextStyles.titleSmall),
           SizedBox(width: 12.w),
-          _buildSortChip("A-Z"),
+          _buildSortChip("A-Z", () => _viewModel.setSort("A-Z")),
           SizedBox(width: 8.w),
-          _buildSortChip("Location"),
+          _buildSortChip("Location", () => _viewModel.handleLocationSort()),
           SizedBox(width: 8.w),
-          _buildSortChip("Favorites"),
-          SizedBox(width: 8.w),
-          _buildFieldDropdown(),
+          _buildSortChip("Favorites", () => _viewModel.setSort("Favorites")),
         ],
       ),
     );
   }
 
-  Widget _buildSortChip(String label) {
-    bool isSelected = selectedSort == label;
-    return GestureDetector(
-      onTap: () {
-        if (label == "Location") {
-          _requestLocationPermission();
-        } else {
-          setState(() {
-            if (isSelected) {
-              selectedSort = 'Default';
-            } else {
-              selectedSort = label;
-            }
-          });
-        }
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryBlue : AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(color: isSelected ? AppColors.primaryBlue : AppColors.borderSoft),
-        ),
-        child: Text(
-          label,
-          style: AppTextStyles.labelMedium.copyWith(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+  Widget _buildSortChip(String label, VoidCallback onTap) {
+    return BlocBuilder<DoctorsListingViewModel, DoctorsListingState>(
+      builder: (context, state) {
+        bool isSelected = _viewModel.selectedSort == label;
+        return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.primaryBlue : AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(color: isSelected ? AppColors.primaryBlue : AppColors.borderSoft),
+            ),
+            child: Text(
+              label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: isSelected ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _requestLocationPermission() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Location Permission"),
-        content: const Text("Dentix needs access to your location to find nearby doctors."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Deny")),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => selectedSort = "Location");
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Location access granted!")));
-            },
-            child: const Text("Allow"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFieldDropdown() {
-    final List<String> fields = [
-      "All Fields",
-      "Implantology",
-      "Dermatology",
-      "Endocrinology",
-      "Oral Surgery",
-      "Periodontology",
-      "Prosthodontics",
-      "Pediatric"
-    ];
-
-    return PopupMenuButton<String>(
-      onSelected: (String value) {
-        setState(() {
-          if (value == "All Fields") {
-            searchQuery = '';
-          } else {
-            searchQuery = value;
-          }
-        });
+        );
       },
-      itemBuilder: (BuildContext context) {
-        return fields.map((String field) {
-          return PopupMenuItem<String>(
-            value: field,
-            child: Text(field, style: AppTextStyles.labelMedium),
-          );
-        }).toList();
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(color: AppColors.borderSoft),
-        ),
-        child: Row(
-          children: [
-            Text("Field", style: AppTextStyles.labelMedium),
-            Icon(Icons.arrow_drop_down, size: 20.r, color: AppColors.textSecondary),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _buildDoctorCard(Doctor doctor) {
+  Widget _buildDoctorCard(BuildContext context, Doctor doctor) {
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(12.r),
+      padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,14 +276,39 @@ class _DoctorsListingScreenState extends State<DoctorsListingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(doctor.name, style: AppTextStyles.titleMedium),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Dr. ${doctor.name}", style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+                          Text(doctor.rank, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      decoration: BoxDecoration(color: AppColors.successLight, borderRadius: BorderRadius.circular(8.r)),
+                      child: Text(
+                        doctor.availability,
+                        style: AppTextStyles.labelSmall.copyWith(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 9.sp),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 4.h),
                 Text(doctor.specialty, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.w600)),
-                SizedBox(height: 8.h),
-                Text(
-                  doctor.bio,
-                  style: AppTextStyles.bodySmall,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
+                SizedBox(height: 4.h),
+                Row(
+                  children: [
+                    Icon(Icons.location_on_outlined, size: 14.r, color: AppColors.primaryGold),
+                    SizedBox(width: 4.w),
+                    Expanded(child: Text(doctor.location, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary))),
+                    if (doctor.distance != null)
+                      Text("${doctor.distance!.toStringAsFixed(1)} km", style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
+                  ],
                 ),
                 SizedBox(height: 12.h),
                 Row(
@@ -374,35 +318,19 @@ class _DoctorsListingScreenState extends State<DoctorsListingScreen> {
                       width: 80.w,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DoctorProfileScreen(doctor: doctor),
-                            ),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => DoctorProfileScreen(doctor: doctor)));
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
                           padding: EdgeInsets.zero,
                         ),
-                        child: Text("Info", style: AppTextStyles.buttonSmall),
+                        child: Text("Profile", style: AppTextStyles.buttonSmall),
                       ),
                     ),
                     const Spacer(),
                     GestureDetector(
-                      onTap: () => _showReviewDialog(doctor),
-                      child: Icon(Icons.question_answer_outlined, color: AppColors.primaryBlue, size: 20.r),
-                    ),
-                    SizedBox(width: 12.w),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          doctor.isFavorite = !doctor.isFavorite;
-                        });
-                      },
+                      onTap: () => _viewModel.toggleFavorite(doctor.id),
                       child: Icon(
                         doctor.isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: doctor.isFavorite ? Colors.red : AppColors.primaryBlue,
@@ -416,73 +344,6 @@ class _DoctorsListingScreenState extends State<DoctorsListingScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showReviewDialog(Doctor doctor) {
-    int selectedStars = 0;
-    final commentController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-              title: Text("Rate ${doctor.name}", style: AppTextStyles.titleMedium),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return IconButton(
-                        icon: Icon(
-                          index < selectedStars ? Icons.star : Icons.star_border,
-                          color: Colors.amber,
-                          size: 30.r,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            selectedStars = index + 1;
-                          });
-                        },
-                      );
-                    }),
-                  ),
-                  SizedBox(height: 16.h),
-                  TextField(
-                    controller: commentController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: "Add a comment (optional)",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("Cancel", style: TextStyle(color: AppColors.grayColor)),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    // Logic to save review
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Review submitted successfully!")),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue),
-                  child: const Text("Submit"),
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 }

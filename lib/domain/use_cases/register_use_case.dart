@@ -17,9 +17,14 @@ class RegisterUseCase {
     required String phoneNumber,
     required String gender,
     String? speciality,
+    String? rank,
+    String? experience,
+    String? education,
     String? certificates,
     String? allergies,
     String? medicalInsurance,
+    String? companyId,
+    String? address,
   }) {
     return _authRepo.register(
       email: email,
@@ -30,9 +35,14 @@ class RegisterUseCase {
       phoneNumber: phoneNumber,
       gender: gender,
       speciality: speciality,
+      rank: rank,
+      experience: experience,
+      education: education,
       certificates: certificates,
       allergies: allergies,
       medicalInsurance: medicalInsurance,
+      companyId: companyId,
+      address: address,
     );
   }
 }

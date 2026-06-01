@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import '../../../domain/entities/appointment_entity.dart';
+import '../../auth/auth_cubit/auth_cubit.dart';
+import 'cubit/doctor_home_view_model.dart';
 
 class DoctorHomeTab extends StatefulWidget {
   const DoctorHomeTab({super.key});
@@ -14,41 +19,40 @@ class DoctorHomeTab extends StatefulWidget {
 class _DoctorHomeTabState extends State<DoctorHomeTab> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDate = DateTime.now();
+  final DoctorHomeViewModel _viewModel = getIt<DoctorHomeViewModel>();
 
-  final List<Map<String, String>> _appointments = [
-    {"name": "Ahmed Ali", "type": "Checkup", "time": "09:00 AM", "initials": "AA"},
-    {"name": "Sara Hassan", "type": "Consultation", "time": "10:30 AM", "initials": "SH"},
-    {"name": "Omar Mahmoud", "type": "Root Canal", "time": "01:00 PM", "initials": "OM"},
-    {"name": "Laila Youssef", "type": "Cleaning", "time": "03:00 PM", "initials": "LY"},
-  ];
-
-  // Mock data for days with appointments
-  final List<int> _appointmentDays = [10, 15, 21, 22, 28];
+  @override
+  void initState() {
+    super.initState();
+    _viewModel.getAppointments();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.all(20.r),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildWelcomeHeader(),
-              SizedBox(height: 24.h),
-              _buildDoctorProfileCard(),
-              SizedBox(height: 24.h),
-              
-              // Integrated Calendar
-              _buildCalendarCard(),
-              
-              SizedBox(height: 30.h),
-              _buildAppointmentsHeader(),
-              SizedBox(height: 16.h),
-              _buildAppointmentsList(),
-            ],
+    final currentUser = getIt<AuthCubit>().currentUser;
+
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.all(20.r),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildWelcomeHeader(),
+                SizedBox(height: 24.h),
+                _buildDoctorProfileCard(currentUser),
+                SizedBox(height: 24.h),
+                _buildCalendarCard(),
+                SizedBox(height: 30.h),
+                _buildAppointmentsHeader(),
+                SizedBox(height: 16.h),
+                _buildAppointmentsList(),
+              ],
+            ),
           ),
         ),
       ),
@@ -80,7 +84,7 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
     );
   }
 
-  Widget _buildDoctorProfileCard() {
+  Widget _buildDoctorProfileCard(dynamic user) {
     return Container(
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
@@ -88,7 +92,7 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
         borderRadius: BorderRadius.circular(24.r),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.3),
+            color: AppColors.primaryBlue.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -107,11 +111,11 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Dr. Hazem EL Beltagy",
+                  user?.fullName ?? "Doctor Name",
                   style: AppTextStyles.titleLarge.copyWith(color: Colors.white),
                 ),
                 Text(
-                  "Implantologist Specialist",
+                  user?.speciality ?? "Medical Specialist",
                   style: AppTextStyles.bodySmall.copyWith(color: Colors.white70),
                 ),
                 SizedBox(height: 4.h),
@@ -120,7 +124,7 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                     Icon(Icons.location_on, size: 14.r, color: Colors.white70),
                     SizedBox(width: 4.w),
                     Text(
-                      "Cairo University Dental Center",
+                      "Dentix Clinic Center",
                       style: AppTextStyles.labelSmall.copyWith(color: Colors.white70),
                     ),
                   ],
@@ -225,11 +229,12 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
             final day = index - (firstDayOfMonth - 2);
             final date = DateTime(_focusedDay.year, _focusedDay.month, day);
             final isSelected = DateUtils.isSameDay(_selectedDate, date);
-            final hasAppointment = _appointmentDays.contains(day);
 
             return GestureDetector(
               onTap: () {
-                setState(() => _selectedDate = date);
+                setState(() {
+                  _selectedDate = date;
+                });
               },
               child: Container(
                 alignment: Alignment.center,
@@ -237,26 +242,12 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                   color: isSelected ? AppColors.primaryBlue : Colors.transparent,
                   shape: BoxShape.circle,
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Text(
-                      "$day",
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: isSelected ? Colors.white : AppColors.textPrimary,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    if (hasAppointment && !isSelected)
-                      Positioned(
-                        bottom: 4.h,
-                        child: Container(
-                          height: 4.r,
-                          width: 4.r,
-                          decoration: const BoxDecoration(color: AppColors.primaryBlue, shape: BoxShape.circle),
-                        ),
-                      ),
-                  ],
+                child: Text(
+                  "$day",
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
                 ),
               ),
             );
@@ -283,70 +274,284 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
   }
 
   Widget _buildAppointmentsList() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _appointments.length,
-      itemBuilder: (context, index) {
-        final appointment = _appointments[index];
-        return _buildAppointmentCard(appointment);
+    return BlocBuilder<DoctorHomeViewModel, DoctorHomeState>(
+      builder: (context, state) {
+        if (state is DoctorHomeLoading) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
+        } else if (state is DoctorHomeFailure) {
+          return Center(child: Text(state.message));
+        } else if (state is DoctorHomeSuccess) {
+          final appointments = state.appointments.where((a) => DateUtils.isSameDay(a.date, _selectedDate)).toList();
+
+          if (appointments.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20.h),
+                child: Text("No appointments for this day", style: AppTextStyles.bodyMedium),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: appointments.length,
+            itemBuilder: (context, index) {
+              return _buildAppointmentCard(appointments[index]);
+            },
+          );
+        }
+        return const SizedBox.shrink();
       },
     );
   }
 
-  Widget _buildAppointmentCard(Map<String, String> appointment) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(16.r),
+  Widget _buildAppointmentCard(AppointmentEntity appointment) {
+    // Detect emergency from boolean flag OR specific status string
+    final bool isEmergency = appointment.isEmergency || 
+                             appointment.status == 'Emergency Request Pending';
+    final bool hasRealPhoto = appointment.patientImage != null && 
+                             appointment.patientImage!.startsWith('http');
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: EdgeInsets.only(bottom: 20.h),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(24.r),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: isEmergency 
+                ? AppColors.error.withValues(alpha: 0.15) 
+                : AppColors.shadowColor.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            height: 50.r,
-            width: 50.r,
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlueSoft,
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              appointment["initials"]!,
-              style: AppTextStyles.titleMedium.copyWith(color: AppColors.primaryBlue),
-            ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24.r),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (isEmergency)
+                Container(
+                  width: 6.w,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [AppColors.error, Color(0xFFFF8A65)],
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.all(16.r),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          _buildAvatar(appointment, hasRealPhoto),
+                          SizedBox(width: 16.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        appointment.patientName, 
+                                        style: AppTextStyles.titleMedium.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (isEmergency) ...[
+                                      SizedBox(width: 8.w),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.errorLight,
+                                          borderRadius: BorderRadius.circular(100.r),
+                                        ),
+                                        child: Text(
+                                          "URGENT", 
+                                          style: TextStyle(
+                                            color: AppColors.error, 
+                                            fontSize: 9.sp, 
+                                            fontWeight: FontWeight.w900,
+                                          )
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                SizedBox(height: 4.h),
+                                Row(
+                                  children: [
+                                    Icon(Icons.access_time_rounded, size: 14.r, color: AppColors.textSecondary),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      appointment.time,
+                                      style: AppTextStyles.labelSmall.copyWith(
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12.h),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundPrimary.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Text(
+                          appointment.caseDescription,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                      if (isEmergency) ...[
+                        SizedBox(height: 16.h),
+                        Container(
+                          padding: EdgeInsets.all(12.r),
+                          decoration: BoxDecoration(
+                            color: AppColors.errorLight.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(16.r),
+                            border: Border.all(color: AppColors.error.withValues(alpha: 0.1)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.notification_important_rounded, color: AppColors.error, size: 20.r),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Emergency Reason",
+                                      style: TextStyle(
+                                        color: AppColors.error,
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    Text(
+                                      appointment.emergencyReason ?? "N/A",
+                                      style: AppTextStyles.labelMedium.copyWith(
+                                        color: AppColors.textPrimary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Action buttons only if not already confirmed
+                        if (appointment.status == 'Emergency Request Pending') ...[
+                          SizedBox(height: 16.h),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _viewModel.updateAppointmentStatus(appointment.id, 'Confirmed'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.success,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                                  ),
+                                  child: Text("Approve", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => _viewModel.resolveEmergency(appointment.id, 'Confirmed', false),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primaryGold,
+                                    side: const BorderSide(color: AppColors.primaryGold),
+                                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                                  ),
+                                  child: Text("Mark Normal", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp)),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => _viewModel.updateAppointmentStatus(appointment.id, 'Cancelled'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.error,
+                                    side: const BorderSide(color: AppColors.error),
+                                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                                  ),
+                                  child: Text("Decline", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          SizedBox(width: 16.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(appointment["name"]!, style: AppTextStyles.titleMedium),
-                Text(appointment["type"]!, style: AppTextStyles.bodySmall),
-              ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            child: Text(
-              appointment["time"]!,
-              style: AppTextStyles.labelMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+        ),
       ),
     );
+  }
+
+  Widget _buildAvatar(AppointmentEntity appointment, bool hasRealPhoto) {
+    if (hasRealPhoto) {
+      return Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.primaryBlueSoft, width: 2),
+        ),
+        child: CircleAvatar(
+          radius: 28.r,
+          backgroundImage: NetworkImage(appointment.patientImage!),
+        ),
+      );
+    } else {
+      final String initials = appointment.patientName.isNotEmpty 
+          ? appointment.patientName.trim().split(' ').map((l) => l[0]).take(2).join().toUpperCase()
+          : "?";
+          
+      return CircleAvatar(
+        radius: 28.r,
+        backgroundColor: AppColors.primaryBlueSoft,
+        child: Text(
+          initials,
+          style: AppTextStyles.titleSmall.copyWith(
+            color: AppColors.primaryBlue,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
   }
 }

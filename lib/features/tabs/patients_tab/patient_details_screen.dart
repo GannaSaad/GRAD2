@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
-import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import '../../../domain/entities/medical_record_entity.dart';
+import 'cubit/patient_details_view_model.dart';
+import 'widgets/jaw_chart.dart';
 
-class PatientDetailsScreen extends StatelessWidget {
+class PatientDetailsScreen extends StatefulWidget {
   final String patientName;
   final String patientImage;
 
@@ -15,55 +20,106 @@ class PatientDetailsScreen extends StatelessWidget {
   });
 
   @override
+  State<PatientDetailsScreen> createState() => _PatientDetailsScreenState();
+}
+
+class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
+  late PatientDetailsViewModel _viewModel;
+  int? _selectedToothId;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = getIt<PatientDetailsViewModel>();
+    _viewModel.getMedicalRecords(widget.patientName);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          _buildSliverAppBar(context),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(20.r),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildQuickStats(),
-                  SizedBox(height: 30.h),
-                  _buildSectionTitle("Medical Overview"),
-                  SizedBox(height: 16.h),
-                  _buildMedicalOverviewCard(),
-                  SizedBox(height: 30.h),
-                  _buildSectionTitle("Recent Visits"),
-                  SizedBox(height: 16.h),
-                  _buildVisitHistory(),
-                  SizedBox(height: 30.h),
-                  _buildSectionTitle("Notes"),
-                  SizedBox(height: 16.h),
-                  _buildNotesCard(),
-                  SizedBox(height: 100.h),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.addRecord, arguments: patientName);
-        },
-        backgroundColor: AppColors.primaryColor,
-        icon: const Icon(Icons.add_chart_outlined, color: Colors.white),
-        label: const Text("Add Record", style: TextStyle(color: Colors.white)),
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        body: BlocBuilder<PatientDetailsViewModel, PatientDetailsState>(
+          builder: (context, state) {
+            List<MedicalRecordEntity> records = [];
+            if (state is PatientDetailsSuccess) {
+              records = state.records;
+            }
+
+            final Map<int, Map<String, dynamic>> toothDataMap = {};
+            for (var record in records) {
+              if (record.toothId != null) {
+                toothDataMap[record.toothId!] = {
+                  'status': record.treatmentStatus,
+                  'diagnosis': record.toothDiagnosis,
+                  'procedure': record.toothProcedure,
+                  'plan': record.toothPlan,
+                };
+              }
+            }
+
+            return CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _buildSliverAppBar(context),
+                if (state is PatientDetailsLoading)
+                  const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: AppColors.primaryBlue))),
+                if (state is PatientDetailsFailure)
+                  SliverFillRemaining(child: Center(child: Text(state.message))),
+                if (state is PatientDetailsSuccess || state is PatientDetailsInitial)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.r),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildQuickStats(),
+                          SizedBox(height: 30.h),
+                          
+                          _buildSectionTitle("Medical Overview"),
+                          SizedBox(height: 16.h),
+                          _buildMedicalOverviewCard(),
+                          
+                          SizedBox(height: 30.h),
+                          
+                          _buildSectionTitle("X-Rays & Imaging"),
+                          SizedBox(height: 16.h),
+                          _buildImagingGrid(records),
+                          
+                          SizedBox(height: 30.h),
+                          
+                          _buildSectionTitle("Dental Chart"),
+                          SizedBox(height: 16.h),
+                          JawChart(
+                            selectedTooth: _selectedToothId,
+                            onToothTap: (id) => setState(() => _selectedToothId = id),
+                            toothData: toothDataMap,
+                          ),
+                          
+                          if (_selectedToothId != null) ...[
+                            SizedBox(height: 24.h),
+                            _buildToothInfoPanel(toothDataMap[_selectedToothId!]),
+                          ],
+                          
+                          SizedBox(height: 100.h),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 220.h,
+      expandedHeight: 200.h,
       pinned: true,
-      backgroundColor: AppColors.primaryColor,
+      backgroundColor: AppColors.primaryBlue,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Navigator.pop(context),
@@ -71,22 +127,10 @@ class PatientDetailsScreen extends StatelessWidget {
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: true,
         title: Text(
-          patientName,
+          widget.patientName,
           style: AppTextStyles.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        background: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(color: AppColors.primaryColor),
-            Positioned(
-              top: 60.h,
-              child: CircleAvatar(
-                radius: 50.r,
-                backgroundImage: AssetImage(patientImage),
-              ),
-            ),
-          ],
-        ),
+        background: Container(color: AppColors.primaryBlue),
       ),
     );
   }
@@ -96,7 +140,7 @@ class PatientDetailsScreen extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _buildStatItem("Age", "28", Icons.cake_outlined),
-        _buildStatItem("Gender", "Male", Icons.person_outline),
+        _buildStatItem("Gender", "Female", Icons.person_outline),
         _buildStatItem("Blood", "A+", Icons.bloodtype_outlined),
       ],
     );
@@ -104,16 +148,16 @@ class PatientDetailsScreen extends StatelessWidget {
 
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Container(
-      width: 100.w,
+      width: 110.w,
       padding: EdgeInsets.all(12.r),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.borderSoft),
       ),
       child: Column(
         children: [
-          Icon(icon, color: AppColors.primaryColor, size: 20.r),
+          Icon(icon, color: AppColors.primaryBlue, size: 20.r),
           SizedBox(height: 8.h),
           Text(value, style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.bold)),
           Text(label, style: AppTextStyles.labelSmall),
@@ -123,10 +167,7 @@ class PatientDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-    );
+    return Text(title, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary));
   }
 
   Widget _buildMedicalOverviewCard() {
@@ -135,15 +176,13 @@ class PatientDetailsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: AppColors.primaryBlueSoft),
+        border: Border.all(color: AppColors.borderSoft),
       ),
       child: Column(
         children: [
-          _buildOverviewRow("Allergies", "Penicillin, Latex", Colors.red),
+          _buildOverviewRow("Allergies", "Penicillin", Colors.red),
           const Divider(height: 24),
-          _buildOverviewRow("Condition", "Stable - Routine Followup", Colors.green),
-          const Divider(height: 24),
-          _buildOverviewRow("Insurance", "AXA Healthcare - Platinum", AppColors.primaryColor),
+          _buildOverviewRow("Condition", "Healthy", Colors.green),
         ],
       ),
     );
@@ -159,62 +198,70 @@ class PatientDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVisitHistory() {
-    return Column(
-      children: [
-        _buildVisitItem("Dental Scaling", "12 Dec 2024", "Success"),
-        _buildVisitItem("Root Canal Phase 1", "20 Nov 2024", "Follow-up"),
-      ],
+  Widget _buildImagingGrid(List<MedicalRecordEntity> records) {
+    final List<String> allImages = [];
+    for (var record in records) {
+      if (record.panoramicImages != null) allImages.addAll(record.panoramicImages!);
+      if (record.intraoralImages != null) allImages.addAll(record.intraoralImages!);
+    }
+
+    if (allImages.isEmpty) {
+      return Center(child: Text("No clinical images found.", style: AppTextStyles.bodySmall));
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: allImages.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12.r,
+        crossAxisSpacing: 12.r,
+      ),
+      itemBuilder: (context, index) => _buildActualImageTile(allImages[index]),
     );
   }
 
-  Widget _buildVisitItem(String title, String date, String tag) {
+  Widget _buildActualImageTile(String url) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16.r),
+        child: CachedNetworkImage(
+          imageUrl: url,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+          errorWidget: (context, url, error) => const Icon(Icons.error),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToothInfoPanel(Map<String, dynamic>? data) {
+    if (data == null) return const SizedBox.shrink();
+    
+    String status = data['status'] ?? "No Record";
+    Color statusColor = status == 'Completed' ? Colors.green : Colors.red;
+
+    return Container(
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16.r),
+        color: statusColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: EdgeInsets.all(10.r),
-            decoration: BoxDecoration(color: AppColors.primaryBlueSoft, shape: BoxShape.circle),
-            child: Icon(Icons.history, color: AppColors.primaryColor, size: 20.r),
-          ),
-          SizedBox(width: 16.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.titleSmall),
-                Text(date, style: AppTextStyles.labelSmall),
-              ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-            decoration: BoxDecoration(color: AppColors.backgroundPrimary, borderRadius: BorderRadius.circular(10.r)),
-            child: Text(tag, style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryColor, fontWeight: FontWeight.bold)),
-          ),
+          Text("Tooth #$_selectedToothId Analysis", style: AppTextStyles.titleSmall.copyWith(color: statusColor, fontWeight: FontWeight.bold)),
+          SizedBox(height: 12.h),
+          Text("Diagnosis: ${data['diagnosis'] ?? 'N/A'}", style: AppTextStyles.bodySmall),
+          Text("Procedure: ${data['procedure'] ?? 'N/A'}", style: AppTextStyles.bodySmall),
+          Text("Status: $status", style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold, color: statusColor)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildNotesCard() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF9E6), // Light warm yellow for notes
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: Colors.orange.shade100),
-      ),
-      child: Text(
-        "Patient experiences anxiety during long procedures. Prefers morning appointments. Ensure local anesthesia is fully effective before starting.",
-        style: AppTextStyles.bodyMedium.copyWith(fontStyle: FontStyle.italic, color: Colors.orange.shade900),
       ),
     );
   }

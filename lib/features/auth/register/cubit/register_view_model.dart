@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../domain/use_cases/register_use_case.dart';
 import '../../auth_cubit/auth_states.dart';
@@ -22,30 +24,61 @@ class RegisterViewModel extends Cubit<AuthState> {
   String selectedRole = 'patient';
   String selectedGender = 'male';
 
-  // Doctor specific
-  final specialityController = TextEditingController();
-  final certificatesController = TextEditingController();
+  // Supplier/Company specific
+  String? selectedCompany;
+  final addressController = TextEditingController();
 
-  // Patient specific
+  // Doctor specific fields
+  final specialityController = TextEditingController();
+  final rankController = TextEditingController();
+  final experienceController = TextEditingController();
+  final educationController = TextEditingController();
+  File? certificateFile;
+
+  // Patient specific fields
   final allergiesController = TextEditingController();
   final medicalInsuranceController = TextEditingController();
 
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> pickCertificate() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        certificateFile = File(image.path);
+        emit(AuthInitial()); 
+      }
+    } catch (e) {
+      emit(AuthFailure("Failed to pick image: ${e.toString()}"));
+    }
+  }
+
   Future<void> register() async {
     if (formKey.currentState!.validate()) {
+      if (selectedRole == 'doctor' && certificateFile == null) {
+        emit(AuthFailure("Please upload your professional certificate"));
+        return;
+      }
+
       emit(AuthLoading());
       try {
         final user = await _registerUseCase.execute(
-          email: emailController.text,
+          email: emailController.text.trim(),
           password: passwordController.text,
-          name: nameController.text,
-          age: ageController.text,
+          name: nameController.text.trim(),
+          age: ageController.text.trim(),
           role: selectedRole,
-          phoneNumber: phoneController.text,
+          phoneNumber: phoneController.text.trim(),
           gender: selectedGender,
           speciality: selectedRole == 'doctor' ? specialityController.text : null,
-          certificates: selectedRole == 'doctor' ? certificatesController.text : null,
+          rank: selectedRole == 'doctor' ? rankController.text : null,
+          experience: selectedRole == 'doctor' ? experienceController.text : null,
+          education: selectedRole == 'doctor' ? educationController.text : null,
+          certificates: selectedRole == 'doctor' ? "verified_by_it" : null,
           allergies: selectedRole == 'patient' ? allergiesController.text : null,
           medicalInsurance: selectedRole == 'patient' ? medicalInsuranceController.text : null,
+          companyId: selectedRole == 'supplier' ? selectedCompany : null,
+          address: selectedRole == 'supplier' ? addressController.text : null,
         );
         emit(AuthSuccess(user));
       } catch (e) {
@@ -63,9 +96,12 @@ class RegisterViewModel extends Cubit<AuthState> {
     confirmPasswordController.dispose();
     phoneController.dispose();
     specialityController.dispose();
-    certificatesController.dispose();
+    rankController.dispose();
+    experienceController.dispose();
+    educationController.dispose();
     allergiesController.dispose();
     medicalInsuranceController.dispose();
+    addressController.dispose();
     return super.close();
   }
 }
