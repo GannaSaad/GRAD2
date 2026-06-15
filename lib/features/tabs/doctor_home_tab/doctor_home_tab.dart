@@ -124,7 +124,7 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                     Icon(Icons.location_on, size: 14.r, color: Colors.white70),
                     SizedBox(width: 4.w),
                     Text(
-                      "Dentix Clinic Center",
+                      user?.clinicName ?? "Dentix Clinic Center",
                       style: AppTextStyles.labelSmall.copyWith(color: Colors.white70),
                     ),
                   ],
@@ -465,7 +465,6 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                           ),
                         ),
                         
-                        // Action buttons only if not already confirmed
                         if (appointment.status == 'Emergency Request Pending') ...[
                           SizedBox(height: 16.h),
                           Row(
@@ -480,33 +479,20 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                                     padding: EdgeInsets.symmetric(vertical: 12.h),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
                                   ),
-                                  child: Text("Approve", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
+                                  child: Text("Approve Request", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
                                 ),
                               ),
-                              SizedBox(width: 8.w),
+                              SizedBox(width: 12.w),
                               Expanded(
                                 child: OutlinedButton(
                                   onPressed: () => _viewModel.resolveEmergency(appointment.id, 'Confirmed', false),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.primaryGold,
-                                    side: const BorderSide(color: AppColors.primaryGold),
+                                    foregroundColor: AppColors.textSecondary,
+                                    side: BorderSide(color: AppColors.borderSoft),
                                     padding: EdgeInsets.symmetric(vertical: 12.h),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
                                   ),
-                                  child: Text("Mark Normal", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp)),
-                                ),
-                              ),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => _viewModel.updateAppointmentStatus(appointment.id, 'Cancelled'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.error,
-                                    side: const BorderSide(color: AppColors.error),
-                                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
-                                  ),
-                                  child: Text("Decline", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp)),
+                                  child: Text("Normal Visit", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.sp)),
                                 ),
                               ),
                             ],

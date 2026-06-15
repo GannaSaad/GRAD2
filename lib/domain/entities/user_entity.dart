@@ -14,6 +14,7 @@ class UserEntity {
   final String? experience;
   final String? education;
   final String? certificates;
+  final String? clinicName; // Added Clinic Name
   
   // Patient specific
   final String? allergies;
@@ -43,6 +44,7 @@ class UserEntity {
     this.experience,
     this.education,
     this.certificates,
+    this.clinicName,
     this.allergies,
     this.medicalInsurance,
     this.totalToPay,
@@ -67,6 +69,7 @@ class UserEntity {
     String? experience,
     String? education,
     String? certificates,
+    String? clinicName,
     String? allergies,
     String? medicalInsurance,
     double? totalToPay,
@@ -90,6 +93,7 @@ class UserEntity {
       experience: experience ?? this.experience,
       education: education ?? this.education,
       certificates: certificates ?? this.certificates,
+      clinicName: clinicName ?? this.clinicName,
       allergies: allergies ?? this.allergies,
       medicalInsurance: medicalInsurance ?? this.medicalInsurance,
       totalToPay: totalToPay ?? this.totalToPay,

@@ -26,7 +26,6 @@ class _SupplierRequestsTabState extends State<SupplierRequestsTab> {
   @override
   Widget build(BuildContext context) {
     final user = getIt<AuthCubit>().currentUser;
-    // CONNECTION: The supplier user's companyId is the key link
     final companyId = user?.companyId ?? "Supplier";
 
     return Scaffold(
@@ -55,8 +54,6 @@ class _SupplierRequestsTabState extends State<SupplierRequestsTab> {
                   }
                   
                   final allRequests = snapshot.data ?? [];
-                  
-                  // FILTER: Only show requests belonging to this supplier's company
                   final companyRequests = allRequests.where((r) => r.supplier == companyId).toList();
 
                   final filteredList = _selectedFilter == "All" 
@@ -161,18 +158,27 @@ class _SupplierRequestsTabState extends State<SupplierRequestsTab> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(
-                        req.supplier,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.bold, 
-                          color: AppColors.textPrimary
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "From: ${req.clinicName ?? 'Unknown Clinic'}",
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              fontWeight: FontWeight.bold, 
+                              color: AppColors.textPrimary
+                            ),
+                          ),
+                          Text(
+                            "ID: ${req.id.length > 8 ? req.id.substring(0, 8).toUpperCase() : req.id.toUpperCase()}",
+                            style: AppTextStyles.labelSmall.copyWith(color: AppColors.textTertiary),
+                          ),
+                        ],
                       ),
                     ),
                     _buildStatusBadge(req.status),
                   ],
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: 16.h),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -180,7 +186,7 @@ class _SupplierRequestsTabState extends State<SupplierRequestsTab> {
                     SizedBox(width: 8.w),
                     Expanded(
                       child: Text(
-                        "${req.itemName} (${req.quantity})",
+                        "${req.itemName} (${req.quantity} units)",
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
@@ -194,17 +200,30 @@ class _SupplierRequestsTabState extends State<SupplierRequestsTab> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "${req.date.day}/${req.date.month}/${req.date.year}",
-                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.textTertiary),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 12.r, color: AppColors.textTertiary),
+                        SizedBox(width: 4.w),
+                        Text(
+                          "${req.date.day}/${req.date.month}/${req.date.year}",
+                          style: AppTextStyles.labelSmall.copyWith(color: AppColors.textTertiary),
+                        ),
+                      ],
                     ),
-                    Text(
-                      "ID: ${req.id.length > 8 ? req.id.substring(0, 8).toUpperCase() : req.id.toUpperCase()}",
-                      style: AppTextStyles.labelSmall.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryGold,
+                    if (req.neededBy != null)
+                      Row(
+                        children: [
+                          Icon(Icons.timer_outlined, size: 12.r, color: AppColors.error),
+                          SizedBox(width: 4.w),
+                          Text(
+                            "Due: ${req.neededBy!.day}/${req.neededBy!.month}",
+                            style: AppTextStyles.labelSmall.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
                   ],
                 ),
               ],

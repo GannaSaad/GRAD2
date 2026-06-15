@@ -59,8 +59,6 @@ class BookingViewModel extends Cubit<BookingState> {
 
       String finalPatientId = patientId ?? user.uid;
 
-      // 1. Try to create a walk-in user profile (Silently fail if permissions deny)
-      // This document is useful but not critical for the appointment to exist.
       if (isReceptionistBooking && patientId == null && patientPhone != null) {
         finalPatientId = 'walkin_$patientPhone';
         try {
@@ -71,10 +69,11 @@ class BookingViewModel extends Cubit<BookingState> {
             'role': 'patient',
             'assignedDoctorId': doctor.id, 
             'assignedDoctorName': doctor.name,
+            'clinicName': doctor.clinic, // SYNC: Walk-in patient gets clinic info
             'createdAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
         } catch (e) {
-          print("Firestore Warning: Could not create walk-in user doc (Permission Denied). Proceeding with appointment.");
+          print("Firestore Warning: Could not create walk-in user doc (Permission Denied).");
         }
       }
 
@@ -86,13 +85,9 @@ class BookingViewModel extends Cubit<BookingState> {
         patientName: patientName ?? user.fullName ?? 'Patient',
         date: date,
         time: time,
-        // We use 'Emergency Request Pending' so clinical staff (Doctor/Nurse) can Accept/Reject it
-        // from their advanced triage dashboard.
-        status: isEmergency ? 'Emergency Request Pending' : 'Confirmed',
-        caseDescription: isEmergency 
-            ? (emergencyReason ?? 'Urgent Care Request') 
-            : (caseDescription ?? 'Regular Check-up'),
-        clinicName: 'Dentix Clinic',
+        status: isReceptionistBooking ? 'Confirmed' : (isEmergency ? 'Emergency Request Pending' : 'Confirmed'),
+        caseDescription: isEmergency ? (emergencyReason ?? 'Emergency') : (caseDescription ?? 'Initial Consultation'),
+        clinicName: doctor.clinic, // SYNC: Use the real clinic name from the Doctor object
         doctorImage: doctor.image,
         isReceptionistBooking: isReceptionistBooking,
         isEmergency: isEmergency,
@@ -100,15 +95,14 @@ class BookingViewModel extends Cubit<BookingState> {
         emergencyDescription: emergencyDescription,
       );
 
-      // 2. Main Appointment Creation
       await _bookAppointmentUseCase.call(appointment);
       emit(BookingSuccess());
     } catch (e) {
-      String msg = e.toString().replaceAll('Exception: ', '');
-      if (msg.contains('permission-denied')) {
-        msg = "Permission Denied: Your staff account does not have permission to book for this doctor in Firestore.";
+      String errorMessage = e.toString().replaceAll('Exception: ', '');
+      if (errorMessage.contains('permission-denied')) {
+        errorMessage = "Permission Denied: The system could not save the appointment.";
       }
-      emit(BookingFailure(msg));
+      emit(BookingFailure(errorMessage));
     }
   }
 }

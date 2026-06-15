@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import '../../../api/config/di/di.dart';
+import '../../../core/core/utils/app_assets.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
@@ -121,6 +123,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       SizedBox(height: 16.h),
 
                       if (registerViewModel.selectedRole == 'doctor') ...[
+                        CustomTextFormField(
+                          hintText: "Clinic Name",
+                          prefixIcon: Icon(Icons.local_hospital_outlined, color: AppColors.grayColor),
+                          validator: (val) => val == null || val.isEmpty ? "Required" : null,
+                          controller: registerViewModel.clinicNameController,
+                        ),
+                        SizedBox(height: 16.h),
                         CustomTextFormField(
                           hintText: "Speciality (e.g. Implantologist)",
                           prefixIcon: Icon(Icons.medical_services_outlined, color: AppColors.grayColor),

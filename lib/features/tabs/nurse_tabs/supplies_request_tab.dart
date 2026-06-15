@@ -22,6 +22,8 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
   final _itemNameController = TextEditingController();
   final _quantityController = TextEditingController();
   final _notesController = TextEditingController();
+  final _clinicPhoneController = TextEditingController(); // Added
+  final _clinicAddressController = TextEditingController(); // Added
   DateTime? _selectedNeededBy;
   String? _selectedCompany;
   String? _selectedSupplierId;
@@ -245,6 +247,10 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
                 SizedBox(height: 16.h),
                 _buildDialogField(_quantityController, "Quantity", Icons.format_list_numbered, keyboardType: TextInputType.number),
                 SizedBox(height: 16.h),
+                _buildDialogField(_clinicPhoneController, "Clinic Phone Number", Icons.phone_outlined, keyboardType: TextInputType.phone),
+                SizedBox(height: 16.h),
+                _buildDialogField(_clinicAddressController, "Clinic Address", Icons.location_on_outlined),
+                SizedBox(height: 16.h),
                 
                 // 1. SELECT COMPANY
                 DropdownButtonFormField<String>(
@@ -327,7 +333,11 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (_itemNameController.text.isNotEmpty && _quantityController.text.isNotEmpty && _selectedCompany != null) {
+                if (_itemNameController.text.isNotEmpty && 
+                    _quantityController.text.isNotEmpty && 
+                    _selectedCompany != null &&
+                    _clinicPhoneController.text.isNotEmpty &&
+                    _clinicAddressController.text.isNotEmpty) {
                   _viewModel.createRequest(
                     itemName: _itemNameController.text,
                     quantity: int.parse(_quantityController.text),
@@ -335,11 +345,15 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
                     supplierId: _selectedSupplierId, 
                     notes: _notesController.text,
                     neededBy: _selectedNeededBy,
+                    clinicPhone: _clinicPhoneController.text.trim(),
+                    clinicAddress: _clinicAddressController.text.trim(),
                   );
                   Navigator.pop(context);
                   _itemNameController.clear();
                   _quantityController.clear();
                   _notesController.clear();
+                  _clinicPhoneController.clear();
+                  _clinicAddressController.clear();
                   _selectedNeededBy = null;
                   _selectedCompany = null;
                 }
@@ -390,6 +404,8 @@ class _SuppliesRequestTabState extends State<SuppliesRequestTab> {
     _itemNameController.dispose();
     _quantityController.dispose();
     _notesController.dispose();
+    _clinicPhoneController.dispose();
+    _clinicAddressController.dispose();
     super.dispose();
   }
 }

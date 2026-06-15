@@ -102,7 +102,7 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDoctorStatusHeader(staff?.assignedDoctorName ?? "Doctor"),
+                _buildDoctorStatusHeader(staff?.assignedDoctorName ?? "Doctor", staff?.clinicName ?? "Clinic"),
                 SizedBox(height: 16.h),
                 
                 Padding(
@@ -147,7 +147,7 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
           side: const BorderSide(color: Colors.red, width: 1.5),
           padding: EdgeInsets.symmetric(vertical: 14.h),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-          backgroundColor: Colors.red.withOpacity(0.05),
+          backgroundColor: Colors.red.withValues(alpha: 0.05),
         ),
       ),
     );
@@ -224,9 +224,10 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
                     doctor: Doctor(
                       id: staff.assignedDoctorId,
                       name: staff.assignedDoctorName,
-                      specialty: '',
-                      image: 'assets/images/doctor.jpg',
-                      rank: '', bio: '', experience: '', rating: '', reviews: '', clinic: '', location: '', latitude: 0, longitude: 0, availability: '', education: [], languages: [], certifications: [], affiliations: []
+                      specialty: "",
+                      image: "assets/images/doctor.jpg",
+                      clinic: staff.clinicName ?? "", // SYNCED: Use staff's clinic name
+                      rank: "", bio: "", experience: "", rating: "", reviews: "", location: "", latitude: 0, longitude: 0, availability: "", education: [], languages: [], certifications: [], affiliations: []
                     ),
                     date: DateTime.now(),
                     time: "ASAP",
@@ -248,7 +249,7 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
     );
   }
 
-  Widget _buildDoctorStatusHeader(String doctorName) {
+  Widget _buildDoctorStatusHeader(String doctorName, String clinicName) {
     return Container(
       width: double.infinity,
       margin: EdgeInsets.symmetric(horizontal: 24.w),
@@ -263,6 +264,7 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
         children: [
           Text("Scheduling for", style: AppTextStyles.labelSmall.copyWith(color: Colors.white70)),
           Text("Dr. $doctorName", style: AppTextStyles.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+          Text(clinicName, style: AppTextStyles.labelSmall.copyWith(color: Colors.white70)),
           SizedBox(height: 8.h),
           const Divider(color: Colors.white24),
           Row(
@@ -291,7 +293,7 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(DateFormat('MMMM yyyy').format(_focusedDay), style: AppTextStyles.titleSmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
+              Text(DateFormat("MMMM yyyy").format(_focusedDay), style: AppTextStyles.titleSmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
               Row(
                 children: [
                   IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1))),
@@ -447,9 +449,10 @@ class _ReceptionistActivityTabState extends State<ReceptionistActivityTab> {
                   doctor: Doctor(
                     id: staff.assignedDoctorId,
                     name: staff.assignedDoctorName,
-                    specialty: '',
-                    image: 'assets/images/doctor.jpg',
-                    rank: '', bio: '', experience: '', rating: '', reviews: '', clinic: '', location: '', latitude: 0, longitude: 0, availability: '', education: [], languages: [], certifications: [], affiliations: []
+                    specialty: "",
+                    image: "assets/images/doctor.jpg",
+                    clinic: staff.clinicName ?? "", // SYNCED
+                    rank: "", bio: "", experience: "", rating: "", reviews: "", location: "", latitude: 0, longitude: 0, availability: "", education: [], languages: [], certifications: [], affiliations: []
                   ),
                   date: _selectedDay!,
                   time: _selectedTime!,

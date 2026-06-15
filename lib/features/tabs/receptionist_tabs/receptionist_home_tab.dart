@@ -49,7 +49,10 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(user?.fullName ?? "Receptionist"),
-              _buildNurseProfileCard(user?.assignedDoctorName ?? "Doctor"),
+              _buildStaffProfileCard(
+                doctorName: user?.assignedDoctorName ?? "Doctor",
+                clinicName: user?.clinicName ?? "Dentix Clinic Center",
+              ),
               SizedBox(height: 20.h),
               _buildCalendarStrip(),
               SizedBox(height: 24.h),
@@ -84,7 +87,7 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
     );
   }
 
-  Widget _buildNurseProfileCard(String doctorName) {
+  Widget _buildStaffProfileCard({required String doctorName, required String clinicName}) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 24.w),
       padding: EdgeInsets.all(16.r),
@@ -107,6 +110,14 @@ class _ReceptionistHomeTabState extends State<ReceptionistHomeTab> {
               children: [
                 Text("Assigned to: $doctorName", style: AppTextStyles.titleSmall.copyWith(color: Colors.white)),
                 Text("Front Desk Coordinator", style: AppTextStyles.labelSmall.copyWith(color: Colors.white70)),
+                SizedBox(height: 4.h),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 14.r, color: Colors.white70),
+                    SizedBox(width: 4.w),
+                    Text(clinicName, style: AppTextStyles.labelSmall.copyWith(color: Colors.white70)),
+                  ],
+                ),
               ],
             ),
           ),

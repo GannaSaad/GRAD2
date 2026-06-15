@@ -15,6 +15,7 @@ abstract class AuthRepo {
     String? experience,
     String? education,
     String? certificates,
+    String? clinicName, // Added Clinic Name
     String? allergies,
     String? medicalInsurance,
     String? companyId,

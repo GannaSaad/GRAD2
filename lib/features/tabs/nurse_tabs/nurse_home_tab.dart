@@ -75,7 +75,10 @@ class _NurseHomeTabState extends State<NurseHomeTab> {
                         children: [
                           _buildWelcomeHeader(user?.fullName ?? "Assistant"),
                           SizedBox(height: 24.h),
-                          _buildNurseProfileCard(user?.assignedDoctorName ?? "Doctor"),
+                          _buildNurseProfileCard(
+                            doctorName: user?.assignedDoctorName ?? "Doctor",
+                            clinicName: user?.clinicName ?? "Dentix Clinic Center",
+                          ),
                           SizedBox(height: 30.h),
                           
                           _buildDailyTaskSummary(patientCount, pendingRequests),
@@ -109,7 +112,7 @@ class _NurseHomeTabState extends State<NurseHomeTab> {
     );
   }
 
-  Widget _buildNurseProfileCard(String doctorName) {
+  Widget _buildNurseProfileCard({required String doctorName, required String clinicName}) {
     return Container(
       padding: EdgeInsets.all(20.r),
       decoration: BoxDecoration(
@@ -136,7 +139,7 @@ class _NurseHomeTabState extends State<NurseHomeTab> {
                   children: [
                     Icon(Icons.location_on, size: 14.r, color: Colors.white70),
                     SizedBox(width: 4.w),
-                    Text("Clinic A - Floor 2", style: AppTextStyles.labelSmall.copyWith(color: Colors.white70)),
+                    Text(clinicName, style: AppTextStyles.labelSmall.copyWith(color: Colors.white70)),
                   ],
                 ),
               ],

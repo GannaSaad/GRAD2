@@ -16,7 +16,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   AuthRemoteDataSourceImpl(this._firebaseAuth, this._firestore);
 
-  // Helper getters to ensure we always use the current default app instances
   FirebaseAuth get auth => FirebaseAuth.instance;
   FirebaseFirestore get firestore => FirebaseFirestore.instance;
 
@@ -94,6 +93,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? experience,
     String? education,
     String? certificates,
+    String? clinicName,
     String? allergies,
     String? medicalInsurance,
     String? companyId,
@@ -108,7 +108,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       FirebaseFirestore firestoreToUse = firestore;
 
       if (useSecondaryApp) {
-        // Use a unique name for each secondary app instance to avoid conflicts
         final String appName = 'TempReg_${DateTime.now().millisecondsSinceEpoch}';
         secondaryApp = await Firebase.initializeApp(
           name: appName,
@@ -119,8 +118,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           email: email,
           password: password,
         );
-        // Use the Firestore instance from the secondary app to write the new user's profile
-        // This ensures the write is authenticated as the new user
         firestoreToUse = FirebaseFirestore.instanceFor(app: secondaryApp);
       } else {
         credential = await auth.createUserWithEmailAndPassword(
@@ -152,17 +149,23 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         userData['experience'] = experience ?? '';
         userData['education'] = education ?? '';
         userData['certificates'] = certificates ?? '';
+        userData['clinicName'] = clinicName ?? '';
       } else if (normalizedRole == 'patient') {
         userData['allergies'] = allergies ?? '';
         userData['medicalInsurance'] = medicalInsurance ?? '';
-      } else if (normalizedRole == 'receptionist' || normalizedRole == 'assistant') {
+      } else if (normalizedRole == 'receptionist' || normalizedRole == 'assistant' || normalizedRole == 'nurse') {
         if (currentUser != null) {
           userData['assignedDoctorId'] = currentUser.uid;
           userData['assignedDoctorName'] = currentUser.displayName ?? 'Doctor';
+          
+          // SYNC: Fetch the current user's (Doctor/Admin) clinic name to sync to staff
+          final docSnap = await firestore.collection('users').doc(currentUser.uid).get();
+          if (docSnap.exists) {
+            userData['clinicName'] = docSnap.data()?['clinicName'] ?? '';
+          }
         }
       }
 
-      // Write the user profile doc.
       await firestoreToUse.collection('users').doc(uid).set(userData);
 
       if (normalizedRole == 'supplier') {
@@ -179,24 +182,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         await firebaseUser.updateDisplayName(fullName);
       }
 
-      // Return constructed model directly to avoid immediate READ permission checks
       return UserModel.fromFirestore(userData, uid);
       
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseAuthException(e);
     } on FirebaseException catch (e) {
       if (e.code == 'permission-denied') {
-        throw Exception('Firestore Permission Denied: You do not have authority to create this profile document. Please check security rules.');
+        throw Exception('Cloud Firestore Permission Denied: Staff registration failed due to security rules.');
       }
       throw Exception('Firestore Error: ${e.message}');
     } catch (e) {
       throw Exception('Registration Failed: ${e.toString().replaceAll('Exception: ', '')}');
     } finally {
       if (secondaryApp != null) {
-        // Sign out to clean up session
         await FirebaseAuth.instanceFor(app: secondaryApp).signOut();
-        // Allow a small delay for background Firestore cleanup before the app context might get lost,
-        // but we avoid calling delete() here to prevent the "FirebaseApp was deleted" error in listeners.
       }
     }
   }
@@ -265,8 +264,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> deleteUser(String uid) async {
     try {
-      await firestore.collection('users').doc(uid).delete();
-      await firestore.collection('suppliers').doc(uid).delete();
+      await _firestore.collection('users').doc(uid).delete();
+      await _firestore.collection('suppliers').doc(uid).delete();
     } catch (e) {
       throw Exception('Failed to delete user record: ${e.toString()}');
     }

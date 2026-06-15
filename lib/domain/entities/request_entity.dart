@@ -9,7 +9,9 @@ class RequestEntity extends Equatable {
   final String status;
   final DateTime date;
   final String doctorId;
-  final String? clinicName; // Name of the clinic/doctor requesting
+  final String? clinicName; 
+  final String? clinicPhone; // Added Clinic Phone
+  final String? clinicAddress; // Added Clinic Address
   final String? notes;
   final DateTime? neededBy;
 
@@ -23,6 +25,8 @@ class RequestEntity extends Equatable {
     required this.date,
     required this.doctorId,
     this.clinicName,
+    this.clinicPhone,
+    this.clinicAddress,
     this.notes,
     this.neededBy,
   });
@@ -38,6 +42,8 @@ class RequestEntity extends Equatable {
     date, 
     doctorId, 
     clinicName,
+    clinicPhone,
+    clinicAddress,
     notes, 
     neededBy
   ];
@@ -52,6 +58,8 @@ class RequestEntity extends Equatable {
     DateTime? date,
     String? doctorId,
     String? clinicName,
+    String? clinicPhone,
+    String? clinicAddress,
     String? notes,
     DateTime? neededBy,
   }) {
@@ -65,6 +73,8 @@ class RequestEntity extends Equatable {
       date: date ?? this.date,
       doctorId: doctorId ?? this.doctorId,
       clinicName: clinicName ?? this.clinicName,
+      clinicPhone: clinicPhone ?? this.clinicPhone,
+      clinicAddress: clinicAddress ?? this.clinicAddress,
       notes: notes ?? this.notes,
       neededBy: neededBy ?? this.neededBy,
     );

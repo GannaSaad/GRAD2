@@ -16,6 +16,7 @@ class UserModel {
   final String? experience;
   final String? education;
   final String? certificates;
+  final String? clinicName; // Added Clinic Name
   
   // Patient specific
   final String? allergies;
@@ -44,6 +45,7 @@ class UserModel {
     this.experience,
     this.education,
     this.certificates,
+    this.clinicName,
     this.allergies,
     this.medicalInsurance,
     this.totalToPay,
@@ -68,6 +70,7 @@ class UserModel {
       experience: json['experience'],
       education: json['education'],
       certificates: json['certificates'],
+      clinicName: json['clinicName'],
       allergies: json['allergies'],
       medicalInsurance: json['medicalInsurance'],
       assignedDoctorId: json['assignedDoctorId'],
@@ -92,6 +95,7 @@ class UserModel {
       'experience': experience,
       'education': education,
       'certificates': certificates,
+      'clinicName': clinicName,
       'allergies': allergies,
       'medicalInsurance': medicalInsurance,
       'assignedDoctorId': assignedDoctorId,
@@ -117,6 +121,7 @@ class UserModel {
       experience: experience,
       education: education,
       certificates: certificates,
+      clinicName: clinicName,
       allergies: allergies,
       medicalInsurance: medicalInsurance,
       assignedDoctorId: assignedDoctorId,

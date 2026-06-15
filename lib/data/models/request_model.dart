@@ -10,7 +10,9 @@ class RequestModel {
   final String status;
   final DateTime date;
   final String doctorId;
-  final String? clinicName; // Name of the clinic/doctor requesting
+  final String? clinicName; 
+  final String? clinicPhone;
+  final String? clinicAddress;
   final String? notes;
   final DateTime? neededBy;
 
@@ -24,6 +26,8 @@ class RequestModel {
     required this.date,
     required this.doctorId,
     this.clinicName,
+    this.clinicPhone,
+    this.clinicAddress,
     this.notes,
     this.neededBy,
   });
@@ -39,6 +43,8 @@ class RequestModel {
       date: (json['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       doctorId: json['doctorId'] ?? '',
       clinicName: json['clinicName'],
+      clinicPhone: json['clinicPhone'],
+      clinicAddress: json['clinicAddress'],
       notes: json['notes'],
       neededBy: (json['neededBy'] as Timestamp?)?.toDate(),
     );
@@ -54,6 +60,8 @@ class RequestModel {
       'date': Timestamp.fromDate(date),
       'doctorId': doctorId,
       'clinicName': clinicName,
+      'clinicPhone': clinicPhone,
+      'clinicAddress': clinicAddress,
       'notes': notes,
       'neededBy': neededBy != null ? Timestamp.fromDate(neededBy!) : null,
     };
@@ -70,6 +78,8 @@ class RequestModel {
       date: date,
       doctorId: doctorId,
       clinicName: clinicName,
+      clinicPhone: clinicPhone,
+      clinicAddress: clinicAddress,
       notes: notes,
       neededBy: neededBy,
     );
@@ -86,6 +96,8 @@ class RequestModel {
       date: entity.date,
       doctorId: entity.doctorId,
       clinicName: entity.clinicName,
+      clinicPhone: entity.clinicPhone,
+      clinicAddress: entity.clinicAddress,
       notes: entity.notes,
       neededBy: entity.neededBy,
     );

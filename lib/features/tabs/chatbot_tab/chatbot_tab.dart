@@ -1,22 +1,12 @@
-import 'package:dentex_clean/domain/entities/appointment_entity.dart';
-import 'package:dentex_clean/domain/use_cases/book_appointment_use_case.dart';
-import 'package:dentex_clean/domain/use_cases/get_booked_slots_use_case.dart';
-import 'package:dentex_clean/features/auth/auth_cubit/auth_cubit.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import '../../../api/config/di/di.dart';
 import '../../../api/web_services.dart';
-import '../../../api/models/chat_response.dart';
 import '../../../core/core/utils/app_assets.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
-import '../../doctors/cubit/doctors_listing_view_model.dart';
-import '../../doctors/doctors_listing_screen.dart';
-
-enum ChatStep { initial, choosingSpeciality, choosingDoctor, choosingDate, choosingTime, booking, success, chatting }
 
 class ChatBotTab extends StatefulWidget {
   const ChatBotTab({super.key});
@@ -26,136 +16,42 @@ class ChatBotTab extends StatefulWidget {
 }
 
 class _ChatBotTabState extends State<ChatBotTab> {
-  ChatStep _currentStep = ChatStep.initial;
-  String _selectedSpeciality = "";
-  Doctor? _selectedDoctor;
-  DateTime? _selectedDate;
-  String? _selectedTime;
-  List<String> _availableSlots = [];
-  bool _isLoadingSlots = false;
-
-  // Chat-specific state
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<Map<String, String>> _messages = [];
-  bool _isTyping = false;
+  
+  // --- 🌐 LOCAL CONNECTION SETTINGS ---
+  bool _isLocalMode = true; 
+  String _localIp = "10.5.163.132"; // Your backend laptop IP
+  String _port = "8000"; 
+  // ------------------------------------
 
-  final DoctorsListingViewModel _doctorsViewModel = getIt<DoctorsListingViewModel>();
-  final GetBookedSlotsUseCase _getBookedSlotsUseCase = getIt<GetBookedSlotsUseCase>();
-  final BookAppointmentUseCase _bookAppointmentUseCase = getIt<BookAppointmentUseCase>();
-  final WebServices _webServices = getIt<WebServices>();
-
-  final List<String> _specialities = [
-    "Oral Surgery & Implantology",
-    "Orthadatory",
-    "Implantologist",
-    "Dental Medicine and Surgery",
-    "Pediatric Dentist",
-    "Periodontist",
-    "General Dentist",
+  final List<Map<String, String>> _messages = [
+    {
+      "role": "shagy",
+      "content": "Hello! I am Dr. Shagy. I am now connected to your laptop! How can I help you today? ✨"
+    }
   ];
+  
+  bool _isTyping = false;
+  final WebServices _cloudWebServices = getIt<WebServices>();
 
   final List<String> _recommendedQuestions = [
-    "Why does it happen?",
-    "How can I prevent it?",
-    "How can I reduce discomfort?",
+    "How to whiten teeth?",
+    "Bleeding gums help",
+    "Best brushing habits",
+    "Tooth sensitivity tips"
   ];
 
-  final List<String> _allTimeSlots = [
-    "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-    "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _doctorsViewModel.getAllDoctors();
-  }
-
-  void _onBookAppointmentTap() {
-    setState(() => _currentStep = ChatStep.choosingSpeciality);
-  }
-
-  void _onAskShagyTap() {
-    setState(() {
-      _currentStep = ChatStep.chatting;
-      if (_messages.isEmpty) {
-        _messages.add({"role": "shagy", "content": "I'm ready! Ask me anything about your dental health or our services."});
+  WebServices get _activeWebServices {
+    if (_isLocalMode && _localIp.isNotEmpty) {
+      String baseUrl = _localIp;
+      if (!baseUrl.startsWith("http")) {
+        baseUrl = "http://$baseUrl:$_port/";
       }
-    });
-  }
-
-  void _onSpecialitySelected(String speciality) {
-    setState(() {
-      _selectedSpeciality = speciality;
-      _currentStep = ChatStep.choosingDoctor;
-    });
-  }
-
-  void _onDoctorSelected(Doctor doctor) {
-    setState(() {
-      _selectedDoctor = doctor;
-      _currentStep = ChatStep.choosingDate;
-    });
-  }
-
-  void _onDateSelected(DateTime date) async {
-    setState(() {
-      _selectedDate = date;
-      _isLoadingSlots = true;
-      _currentStep = ChatStep.choosingTime;
-    });
-
-    try {
-      // SYNC CHECK: Fetch real booked slots from Firestore via use case
-      final booked = await _getBookedSlotsUseCase.call(_selectedDoctor!.id, date);
-      
-      if (mounted) {
-        setState(() {
-          // EXCLUSION LOGIC: Filter out slots that are already in the booked list
-          _availableSlots = _allTimeSlots.where((slot) => !booked.contains(slot)).toList();
-          _isLoadingSlots = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoadingSlots = false);
+      if (!baseUrl.endsWith("/")) baseUrl += "/";
+      return WebServices(getIt<Dio>(), baseUrl: baseUrl);
     }
-  }
-
-  void _onTimeSelected(String time) async {
-    setState(() {
-      _selectedTime = time;
-      _currentStep = ChatStep.booking;
-    });
-
-    final patient = getIt<AuthCubit>().currentUser;
-    if (patient == null) return;
-
-    final appointment = AppointmentEntity(
-      id: const Uuid().v4(),
-      doctorId: _selectedDoctor!.id,
-      patientId: patient.uid,
-      doctorName: _selectedDoctor!.name,
-      patientName: patient.fullName ?? "Patient",
-      date: _selectedDate!,
-      time: time,
-      status: 'Pending',
-      caseDescription: "Booked via Shagy AI Assistant",
-      clinicName: "Dentix Clinic",
-      doctorImage: _selectedDoctor!.image,
-      patientImage: 'assets/images/patient.jpeg',
-    );
-
-    try {
-      // SYNC ACTION: Save to Firestore
-      await _bookAppointmentUseCase.call(appointment);
-      if (mounted) setState(() => _currentStep = ChatStep.success);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _currentStep = ChatStep.initial);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Booking failed: $e")));
-      }
-    }
+    return _cloudWebServices;
   }
 
   Future<void> _sendMessage([String? textOverride]) async {
@@ -171,7 +67,8 @@ class _ChatBotTabState extends State<ChatBotTab> {
     _scrollToBottom();
 
     try {
-      final response = await _webServices.getShagyReply({"message": text});
+      final response = await _activeWebServices.getShagyReply({"message": text});
+      
       if (mounted) {
         setState(() {
           _messages.add({"role": "shagy", "content": response.reply});
@@ -181,13 +78,72 @@ class _ChatBotTabState extends State<ChatBotTab> {
       }
     } catch (e) {
       if (mounted) {
+        String finalAnswer = "";
+        
+        if (e is DioException) {
+          if (e.response != null) {
+            finalAnswer = "Parsing Error! 🚨\n\nYour laptop sent data, but I couldn't read it.\n\nRAW DATA: ${e.response?.data}\n\nFIX: Ensure Python returns {'reply': 'text'}";
+          } else {
+            finalAnswer = "Connection Failed 🚨\n\nCheck:\n1. Same Wi-Fi?\n2. Did you run with --host 0.0.0.0?\n3. Firewall OFF?";
+          }
+        } else {
+          finalAnswer = "Unexpected Error: $e";
+        }
+
         setState(() {
-          _messages.add({"role": "shagy", "content": "Connectivity error. Please ensure the AI service is active."});
+          _messages.add({"role": "shagy", "content": finalAnswer});
           _isTyping = false;
         });
         _scrollToBottom();
       }
     }
+  }
+
+  void _showConnectionSettings() {
+    final ipController = TextEditingController(text: _localIp);
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          title: Text("Advanced AI Settings", style: AppTextStyles.titleMedium),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(
+                title: const Text("Use Local Model"),
+                value: _isLocalMode,
+                activeColor: AppColors.primaryBlue,
+                onChanged: (val) => setDialogState(() => _isLocalMode = val),
+              ),
+              if (_isLocalMode) ...[
+                SizedBox(height: 10.h),
+                TextField(
+                  controller: ipController,
+                  decoration: InputDecoration(
+                    labelText: "Laptop IP",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _localIp = ipController.text.trim();
+                });
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r))),
+              child: const Text("Save"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _scrollToBottom() {
@@ -202,188 +158,139 @@ class _ChatBotTabState extends State<ChatBotTab> {
     });
   }
 
-  String get _shagyMessage {
-    switch (_currentStep) {
-      case ChatStep.initial: return "Hello! I am Shagy, your dental assistant. What would you like to do today?";
-      case ChatStep.choosingSpeciality: return "Sure! Which specialty do you want?";
-      case ChatStep.choosingDoctor: return "Great! Choose a doctor from our best experts in $_selectedSpeciality:";
-      case ChatStep.choosingDate: return "When would you like to visit Dr. ${_selectedDoctor?.name}?";
-      case ChatStep.choosingTime: return "Almost there! What time works best for you on ${DateFormat('MMM d').format(_selectedDate!)}?";
-      case ChatStep.booking: return "Booking your appointment...";
-      case ChatStep.success: return "Congratulations! Your appointment is booked and synced. Anything else?";
-      case ChatStep.chatting: return "Ask me anything!";
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _doctorsViewModel,
-      child: Scaffold(
-        backgroundColor: AppColors.backgroundPrimary,
-        appBar: AppBar(
-          title: Text("Dentix Shagy", style: AppTextStyles.medium18White.copyWith(color: AppColors.primaryBlue)),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          leading: _currentStep != ChatStep.initial
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back, color: AppColors.primaryBlue),
-                  onPressed: () {
-                    setState(() {
-                      if (_currentStep == ChatStep.chatting) _currentStep = ChatStep.initial;
-                      else if (_currentStep == ChatStep.choosingTime) _currentStep = ChatStep.choosingDate;
-                      else if (_currentStep == ChatStep.choosingDate) _currentStep = ChatStep.choosingDoctor;
-                      else if (_currentStep == ChatStep.choosingDoctor) _currentStep = ChatStep.choosingSpeciality;
-                      else _currentStep = ChatStep.initial;
-                    });
-                  },
-                )
-              : null,
-        ),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            return Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    physics: const BouncingScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: _currentStep == ChatStep.chatting ? 0 : constraints.maxHeight - AppBar().preferredSize.height),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
-                        child: Column(
-                          mainAxisAlignment: _currentStep == ChatStep.chatting ? MainAxisAlignment.start : MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            if (_currentStep != ChatStep.chatting) ...[
-                              _buildShagyAvatar(),
-                              SizedBox(height: 32.h),
-                              _buildShagyMessage(),
-                              SizedBox(height: 40.h),
-                            ],
-                            _buildStepContent(),
-                          ],
-                        ),
-                      ),
-                    ),
+    return Scaffold(
+      backgroundColor: AppColors.backgroundPrimary,
+      appBar: AppBar(
+        title: GestureDetector(
+          onTap: _showConnectionSettings, 
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 32.r,
+                width: 32.r,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: AssetImage(AppImages.shagyLogo),
+                    fit: BoxFit.cover,
                   ),
                 ),
-                if (_currentStep == ChatStep.chatting) _buildChatInputSection(),
+              ),
+              SizedBox(width: 10.w),
+              Text("Dentix Shagy", style: AppTextStyles.titleMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
+              if (_isLocalMode) ...[
+                SizedBox(width: 6.w),
+                const Icon(Icons.lan_outlined, size: 16, color: Colors.orange),
               ],
-            );
-          }
+            ],
+          ),
         ),
+        backgroundColor: Colors.white.withValues(alpha: 0.8),
+        elevation: 0,
+        centerTitle: true,
       ),
-    );
-  }
-
-  Widget _buildShagyAvatar() {
-    return Container(
-      height: 120.r,
-      width: 120.r,
-      decoration: BoxDecoration(
-        color: AppColors.primaryBlueSoft, 
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowColor.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          )
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+              physics: const BouncingScrollPhysics(),
+              itemCount: _messages.length + (_isTyping ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _messages.length) {
+                  return _buildTypingIndicator();
+                }
+                return _buildChatBubble(_messages[index]);
+              },
+            ),
+          ),
+          _buildChatInputSection(),
         ],
-        image: const DecorationImage(
-          image: AssetImage(AppImages.shagyLogo),
-          fit: BoxFit.cover,
-        ),
       ),
     );
   }
 
-  Widget _buildShagyMessage() {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: Text(
-        _shagyMessage,
-        key: ValueKey(_shagyMessage),
-        textAlign: TextAlign.center,
-        style: AppTextStyles.titleLarge.copyWith(
-          fontWeight: FontWeight.bold,
-          height: 1.4,
-          color: AppColors.textPrimary,
+  Widget _buildTypingIndicator() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16.h),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: AppColors.primaryBlueSoft.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Shagy is thinking", style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryBlue)),
+            SizedBox(width: 8.w),
+            SizedBox(
+              height: 12.h,
+              width: 12.w,
+              child: const CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStepContent() {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 400),
-      child: _getContentForStep(),
-    );
-  }
-
-  Widget _getContentForStep() {
-    switch (_currentStep) {
-      case ChatStep.initial: return _buildInitialOptions();
-      case ChatStep.choosingSpeciality: return _buildSpecialityList();
-      case ChatStep.choosingDoctor: return _buildDoctorList();
-      case ChatStep.choosingDate: return _buildDatePicker();
-      case ChatStep.choosingTime: return _buildTimePicker();
-      case ChatStep.booking: return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
-      case ChatStep.success: return _buildSuccessActions();
-      case ChatStep.chatting: return _buildChatHistory();
-    }
-  }
-
-  Widget _buildInitialOptions() {
-    return Column(
-      key: const ValueKey("initial"),
-      children: [
-        _buildOptionCard(
-          icon: Icons.calendar_month_outlined, 
-          title: "Book an Appointment", 
-          subtitle: "Schedule a visit with one of our doctors.", 
-          onTap: _onBookAppointmentTap
-        ),
-        SizedBox(height: 20.h),
-        _buildOptionCard(
-          icon: Icons.chat_bubble_outline, 
-          title: "Ask Shagy", 
-          subtitle: "Ask me anything about your dental health.", 
-          onTap: _onAskShagyTap
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChatHistory() {
-    return Column(
-      key: const ValueKey("chat_history"),
-      children: _messages.map((m) => _buildChatBubble(m)).toList(),
     );
   }
 
   Widget _buildChatBubble(Map<String, String> message) {
     bool isShagy = message["role"] == "shagy";
-    return Align(
-      alignment: isShagy ? Alignment.centerLeft : Alignment.centerRight,
-      child: Container(
-        margin: EdgeInsets.only(bottom: 12.h),
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          color: isShagy ? AppColors.primaryBlueSoft : AppColors.primaryBlue,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16.r),
-            topRight: Radius.circular(16.r),
-            bottomLeft: Radius.circular(isShagy ? 0 : 16.r),
-            bottomRight: Radius.circular(isShagy ? 16.r : 0),
-          ),
-        ),
-        child: Text(
-          message["content"]!,
-          style: TextStyle(color: isShagy ? AppColors.textPrimary : Colors.white),
+    return GestureDetector(
+      onLongPress: () {
+        Clipboard.setData(ClipboardData(text: message["content"]!));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Copied to clipboard!"), duration: Duration(seconds: 1)));
+      },
+      child: Padding(
+        padding: EdgeInsets.only(bottom: 16.h),
+        child: Row(
+          mainAxisAlignment: isShagy ? MainAxisAlignment.start : MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (isShagy) ...[
+              CircleAvatar(
+                radius: 16.r,
+                backgroundImage: const AssetImage(AppImages.shagyLogo),
+                backgroundColor: AppColors.primaryBlueSoft,
+              ),
+              SizedBox(width: 8.w),
+            ],
+            Flexible(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                decoration: BoxDecoration(
+                  color: isShagy ? Colors.white : AppColors.primaryBlue,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20.r),
+                    topRight: Radius.circular(20.r),
+                    bottomLeft: Radius.circular(isShagy ? 4.r : 20.r),
+                    bottomRight: Radius.circular(isShagy ? 20.r : 4.r),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
+                ),
+                child: Text(
+                  message["content"]!,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: isShagy ? AppColors.textPrimary : Colors.white,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ),
+            if (!isShagy) SizedBox(width: 8.w),
+          ],
         ),
       ),
     );
@@ -391,45 +298,55 @@ class _ChatBotTabState extends State<ChatBotTab> {
 
   Widget _buildChatInputSection() {
     return Container(
-      padding: EdgeInsets.all(16.r),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 10.h, top: 10.h, left: 16.w, right: 16.w),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))
+        ],
+        borderRadius: BorderRadius.only(topLeft: Radius.circular(30.r), topRight: Radius.circular(30.r)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_messages.length > 1) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _recommendedQuestions.map((q) => _buildQuestionChip(q)).toList(),
-              ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: _recommendedQuestions.map((q) => _buildQuestionChip(q)).toList(),
             ),
-            SizedBox(height: 12.h),
-          ],
+          ),
+          SizedBox(height: 12.h),
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _chatController,
-                  decoration: InputDecoration(
-                    hintText: _isTyping ? "Shagy is thinking..." : "Type your question...",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.r), borderSide: BorderSide.none),
-                    filled: true,
-                    fillColor: AppColors.backgroundPrimary,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(25.r),
                   ),
-                  enabled: !_isTyping,
-                  onSubmitted: (_) => _sendMessage(),
+                  child: TextField(
+                    controller: _chatController,
+                    maxLines: null,
+                    decoration: InputDecoration(
+                      hintText: "Ask Shagy...",
+                      hintStyle: AppTextStyles.labelMedium.copyWith(color: AppColors.textTertiary),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                    ),
+                    style: AppTextStyles.bodyMedium,
+                    enabled: !_isTyping,
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
                 ),
               ),
-              SizedBox(width: 8.w),
-              CircleAvatar(
-                backgroundColor: AppColors.primaryBlue,
-                child: IconButton(
-                  icon: Icon(_isTyping ? Icons.hourglass_empty : Icons.send, color: Colors.white),
-                  onPressed: _isTyping ? null : () => _sendMessage(),
+              SizedBox(width: 10.w),
+              GestureDetector(
+                onTap: _isTyping ? null : () => _sendMessage(),
+                child: CircleAvatar(
+                  radius: 24.r,
+                  backgroundColor: _isTyping ? AppColors.grayColor : AppColors.primaryBlue,
+                  child: Icon(Icons.send_rounded, color: Colors.white, size: 20.r),
                 ),
               ),
             ],
@@ -441,199 +358,23 @@ class _ChatBotTabState extends State<ChatBotTab> {
 
   Widget _buildQuestionChip(String question) {
     return Padding(
-      padding: EdgeInsets.only(right: 8.w),
-      child: ActionChip(
-        label: Text(question),
-        onPressed: () => _sendMessage(question),
-        backgroundColor: AppColors.primaryBlueSoft,
-        labelStyle: TextStyle(color: AppColors.primaryBlue, fontSize: 11.sp, fontWeight: FontWeight.bold),
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-      ),
-    );
-  }
-
-  Widget _buildSpecialityList() {
-    return Column(
-      key: const ValueKey("speciality"),
-      children: _specialities.map((s) => _buildItemCard(s, () => _onSpecialitySelected(s))).toList(),
-    );
-  }
-
-  Widget _buildDoctorList() {
-    return BlocBuilder<DoctorsListingViewModel, DoctorsListingState>(
-      key: const ValueKey("doctors"),
-      builder: (context, state) {
-        if (state is DoctorsListingLoading) return const CircularProgressIndicator(color: AppColors.primaryBlue);
-        final doctors = (state is DoctorsListingSuccess) 
-            ? state.doctors.where((d) => d.specialty.toLowerCase().contains(_selectedSpeciality.toLowerCase())).toList() 
-            : [];
-        if (doctors.isEmpty) return const Text("No doctors found for this speciality.");
-        return Column(children: doctors.map((d) => _buildDoctorSmallCard(d)).toList());
-      },
-    );
-  }
-
-  Widget _buildDatePicker() {
-    return Theme(
-      key: const ValueKey("date"),
-      data: Theme.of(context).copyWith(
-        colorScheme: const ColorScheme.light(
-          primary: AppColors.primaryBlue,
-          onPrimary: Colors.white,
-          onSurface: AppColors.textPrimary,
-        ),
-      ),
-      child: Container(
-        padding: EdgeInsets.all(16.r),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(24.r),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadowColor.withValues(alpha: 0.15),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: CalendarDatePicker(
-          initialDate: DateTime.now(),
-          firstDate: DateTime.now(),
-          lastDate: DateTime.now().add(const Duration(days: 30)),
-          onDateChanged: _onDateSelected,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimePicker() {
-    if (_isLoadingSlots) return const CircularProgressIndicator(color: AppColors.primaryBlue);
-    if (_availableSlots.isEmpty) return const Text("No time slots available for this day.");
-    return Column(
-      key: const ValueKey("time"),
-      children: [
-        Text(
-          "Available Times:",
-          style: AppTextStyles.titleSmall.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 20.h),
-        Wrap(
-          spacing: 12.w,
-          runSpacing: 12.h,
-          alignment: WrapAlignment.center,
-          children: _availableSlots.map((time) => _buildTimeChip(time)).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSuccessActions() {
-    return Column(
-      key: const ValueKey("success"),
-      children: [
-        Container(
-          padding: EdgeInsets.all(20.r),
-          decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: Icon(Icons.check_circle_outline, color: AppColors.success, size: 80.r),
-        ),
-        SizedBox(height: 32.h),
-        _buildOptionCard(
-          icon: Icons.chat_bubble_outline, 
-          title: "Ask Shagy", 
-          subtitle: "Do you have another question?", 
-          onTap: () => setState(() => _currentStep = ChatStep.initial)
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDoctorSmallCard(Doctor doctor) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: _buildOptionCard(
-        icon: Icons.person_outline,
-        title: "Dr. ${doctor.name}",
-        subtitle: doctor.rank,
-        onTap: () => _onDoctorSelected(doctor),
-      ),
-    );
-  }
-
-  Widget _buildItemCard(String title, VoidCallback onTap) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16.r),
+      padding: EdgeInsets.only(right: 10.w),
+      child: GestureDetector(
+        onTap: () => _sendMessage(question),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           decoration: BoxDecoration(
-            color: AppColors.cardBackground, 
-            borderRadius: BorderRadius.circular(16.r), 
-            border: Border.all(color: AppColors.borderSoft),
-            boxShadow: [BoxShadow(color: AppColors.shadowColor.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]
+            color: AppColors.primaryBlueSoft.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.1)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, 
-            children: [
-              Text(title, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w600)), 
-              Icon(Icons.chevron_right, color: AppColors.primaryBlue)
-            ]
+          child: Text(
+            question,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimeChip(String time) {
-    return ActionChip(
-      label: Text(time),
-      onPressed: () => _onTimeSelected(time),
-      backgroundColor: AppColors.cardBackground,
-      labelStyle: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold, fontSize: 13.sp),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r), side: const BorderSide(color: AppColors.borderSoft)),
-    );
-  }
-
-  Widget _buildOptionCard({required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(20.r),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground, 
-          borderRadius: BorderRadius.circular(24.r), 
-          border: Border.all(color: AppColors.borderSoft), 
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadowColor, 
-              blurRadius: 15, 
-              offset: const Offset(0, 8)
-            )
-          ]
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(12.r), 
-              decoration: BoxDecoration(color: AppColors.primaryBlueSoft, borderRadius: BorderRadius.circular(16.r)), 
-              child: Icon(icon, color: AppColors.primaryBlue, size: 28.r)
-            ),
-            SizedBox(width: 16.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, 
-                children: [
-                  Text(title, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)), 
-                  SizedBox(height: 4.h),
-                  Text(subtitle, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary, height: 1.3))
-                ]
-              )
-            ),
-            Icon(Icons.arrow_forward_ios, size: 14.r, color: AppColors.textPlaceholder),
-          ],
         ),
       ),
     );

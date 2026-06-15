@@ -33,6 +33,7 @@ class RegisterViewModel extends Cubit<AuthState> {
   final rankController = TextEditingController();
   final experienceController = TextEditingController();
   final educationController = TextEditingController();
+  final clinicNameController = TextEditingController(); // Added Clinic Name Controller
   File? certificateFile;
 
   // Patient specific fields
@@ -75,6 +76,7 @@ class RegisterViewModel extends Cubit<AuthState> {
           experience: selectedRole == 'doctor' ? experienceController.text : null,
           education: selectedRole == 'doctor' ? educationController.text : null,
           certificates: selectedRole == 'doctor' ? "verified_by_it" : null,
+          clinicName: selectedRole == 'doctor' ? clinicNameController.text.trim() : null, // Added Clinic Name
           allergies: selectedRole == 'patient' ? allergiesController.text : null,
           medicalInsurance: selectedRole == 'patient' ? medicalInsuranceController.text : null,
           companyId: selectedRole == 'supplier' ? selectedCompany : null,
@@ -99,6 +101,7 @@ class RegisterViewModel extends Cubit<AuthState> {
     rankController.dispose();
     experienceController.dispose();
     educationController.dispose();
+    clinicNameController.dispose(); // Dispose Clinic Name Controller
     allergiesController.dispose();
     medicalInsuranceController.dispose();
     addressController.dispose();

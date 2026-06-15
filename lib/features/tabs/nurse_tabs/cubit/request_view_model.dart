@@ -63,11 +63,16 @@ class RequestViewModel extends Cubit<RequestState> {
     String? supplierId,
     String? notes,
     DateTime? neededBy,
+    String? clinicPhone,
+    String? clinicAddress,
   }) async {
     final user = getIt<AuthCubit>().currentUser;
     if (user == null || user.assignedDoctorId == null) return;
 
     try {
+      // Syncing both Doctor Name and Clinic Name for the Supplier
+      final String requesterInfo = "${user.assignedDoctorName ?? 'Doctor'} (${user.clinicName ?? 'Clinic'})";
+
       final request = RequestEntity(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         itemName: itemName,
@@ -77,7 +82,9 @@ class RequestViewModel extends Cubit<RequestState> {
         status: 'Pending',
         date: DateTime.now(),
         doctorId: user.assignedDoctorId!,
-        clinicName: user.assignedDoctorName ?? "Clinic",
+        clinicName: requesterInfo,
+        clinicPhone: clinicPhone,
+        clinicAddress: clinicAddress,
         notes: notes,
         neededBy: neededBy,
       );

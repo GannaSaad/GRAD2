@@ -34,7 +34,6 @@ class _SupplierRequestDetailsScreenState extends State<SupplierRequestDetailsScr
     });
 
     try {
-      // Perform the real Firebase update using the document ID
       await _updateUseCase.call(widget.request.id, newStatus);
 
       if (mounted) {
@@ -162,7 +161,7 @@ class _SupplierRequestDetailsScreenState extends State<SupplierRequestDetailsScr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader("Clinic Information"),
+        _buildSectionHeader("Requester & Delivery Information"),
         SizedBox(height: 12.h),
         Container(
           padding: EdgeInsets.all(20.r),
@@ -173,7 +172,11 @@ class _SupplierRequestDetailsScreenState extends State<SupplierRequestDetailsScr
           ),
           child: Column(
             children: [
-              _buildInfoRow(Icons.business_rounded, "Clinic Name", widget.request.supplier),
+              _buildInfoRow(Icons.medical_services_rounded, "Requester", widget.request.clinicName ?? "Unknown"),
+              const Divider(height: 32, color: AppColors.borderSoft),
+              _buildInfoRow(Icons.phone_rounded, "Clinic Phone", widget.request.clinicPhone ?? "N/A"),
+              const Divider(height: 32, color: AppColors.borderSoft),
+              _buildInfoRow(Icons.location_on_rounded, "Delivery Address", widget.request.clinicAddress ?? "N/A"),
               const Divider(height: 32, color: AppColors.borderSoft),
               _buildInfoRow(Icons.calendar_today_rounded, "Request Date", "${widget.request.date.day}/${widget.request.date.month}/${widget.request.date.year}"),
               const Divider(height: 32, color: AppColors.borderSoft),
@@ -285,12 +288,14 @@ class _SupplierRequestDetailsScreenState extends State<SupplierRequestDetailsScr
       children: [
         Icon(icon, size: 20.r, color: AppColors.primaryGold),
         SizedBox(width: 12.w),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textTertiary)),
-            Text(value, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: AppTextStyles.labelSmall.copyWith(color: AppColors.textTertiary)),
+              Text(value, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            ],
+          ),
         ),
       ],
     );
