@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import '../auth/auth_cubit/auth_cubit.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authCubit = getIt<AuthCubit>();
+    final String role = (authCubit.currentUser?.role ?? 'patient').toLowerCase();
+    
+    // Logic to identify staff/doctors/admins who shouldn't delete accounts
+    final bool isStaffOrDoctor = role == 'doctor' || role == 'nurse' || role == 'receptionist' || role == 'admin';
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
@@ -61,15 +69,18 @@ class SettingsScreen extends StatelessWidget {
                   _showLocationPermissionModal(context);
                 },
               ),
-              const Divider(height: 1),
-              _buildSettingItem(
-                icon: Icons.delete_outline,
-                label: "Delete Account",
-                isDestructive: true,
-                onTap: () {
-                  _showDeleteAccountDialog(context);
-                },
-              ),
+              // Only hide the Delete Account option for staff and doctors
+              if (!isStaffOrDoctor) ...[
+                const Divider(height: 1),
+                _buildSettingItem(
+                  icon: Icons.delete_outline,
+                  label: "Delete Account",
+                  isDestructive: true,
+                  onTap: () {
+                    _showDeleteAccountDialog(context);
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -116,14 +127,7 @@ class SettingsScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                height: 4.h,
-                width: 40.w,
-                decoration: BoxDecoration(
-                  color: AppColors.borderMedium,
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
+              Container(height: 4.h, width: 40.w, decoration: BoxDecoration(color: AppColors.borderMedium, borderRadius: BorderRadius.circular(2.r))),
               SizedBox(height: 24.h),
               Text("Allow Location", style: AppTextStyles.titleLarge),
               SizedBox(height: 16.h),
@@ -151,9 +155,7 @@ class SettingsScreen extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Location permission granted!")),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Location permission granted!")));
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,

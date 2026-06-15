@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../widgets/widgets/custom_elevated_button.dart';
 import '../../../widgets/widgets/custom_text_form_field.dart';
+import 'cubit/managerial_staff_view_model.dart';
 
 class ManagerialStaffScreen extends StatefulWidget {
   const ManagerialStaffScreen({super.key});
@@ -18,22 +21,37 @@ class _ManagerialStaffScreenState extends State<ManagerialStaffScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final ManagerialStaffViewModel _viewModel = getIt<ManagerialStaffViewModel>();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
-          onPressed: () => Navigator.pop(context),
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text("Managerial Staff", style: AppTextStyles.bold18White.copyWith(color: AppColors.primaryColor)),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
         ),
-        title: Text("Managerial Staff", style: AppTextStyles.bold18White.copyWith(color: AppColors.primaryColor)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        body: BlocListener<ManagerialStaffViewModel, ManagerialStaffState>(
+          listener: (context, state) {
+            if (state is ManagerialStaffSuccess) {
+              _showSuccessDialog(state.name, state.role);
+            } else if (state is ManagerialStaffFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              );
+            }
+          },
+          child: _selectedRole == null ? _buildSelectionView() : _buildCreateAccountForm(),
+        ),
       ),
-      body: _selectedRole == null ? _buildSelectionView() : _buildCreateAccountForm(),
     );
   }
 
@@ -155,14 +173,24 @@ class _ManagerialStaffScreenState extends State<ManagerialStaffScreen> {
               validator: (val) => val!.length < 6 ? "Minimum 6 characters" : null,
             ),
             SizedBox(height: 40.h),
-            CustomElevatedButton(
-              buttonText: "Create Account",
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  _showSuccessDialog();
-                }
+            BlocBuilder<ManagerialStaffViewModel, ManagerialStaffState>(
+              builder: (context, state) {
+                bool isLoading = state is ManagerialStaffLoading;
+                return CustomElevatedButton(
+                  buttonText: isLoading ? "Creating..." : "Create Account",
+                  onPressed: isLoading ? null : () {
+                    if (_formKey.currentState!.validate()) {
+                      _viewModel.createStaffAccount(
+                        name: _nameController.text.trim(),
+                        email: _emailController.text.trim(),
+                        password: _passwordController.text,
+                        role: _selectedRole!,
+                      );
+                    }
+                  },
+                  backgroundColor: isLoading ? AppColors.grayColor : AppColors.primaryBlue,
+                );
               },
-              backgroundColor: AppColors.primaryBlue,
             ),
           ],
         ),
@@ -177,9 +205,10 @@ class _ManagerialStaffScreenState extends State<ManagerialStaffScreen> {
     );
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog(String name, String role) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         content: Column(
@@ -190,7 +219,7 @@ class _ManagerialStaffScreenState extends State<ManagerialStaffScreen> {
             Text("Success!", style: AppTextStyles.headlineSmall),
             SizedBox(height: 8.h),
             Text(
-              "Account for ${_nameController.text} has been created as a ${_selectedRole}.",
+              "Account for $name has been created as a $role.",
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMedium,
             ),

@@ -11,7 +11,7 @@ class AppTextStyles {
   static TextStyle headlineLarge = GoogleFonts.inter(
     fontSize: 28.sp,
     fontWeight: FontWeight.w700,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
     letterSpacing: -0.5,
     height: 1.2,
   );
@@ -19,7 +19,7 @@ class AppTextStyles {
   static TextStyle headlineMedium = GoogleFonts.inter(
     fontSize: 24.sp,
     fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
     letterSpacing: -0.3,
     height: 1.25,
   );
@@ -27,7 +27,7 @@ class AppTextStyles {
   static TextStyle headlineSmall = GoogleFonts.inter(
     fontSize: 20.sp,
     fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
     letterSpacing: -0.2,
     height: 1.3,
   );
@@ -36,7 +36,7 @@ class AppTextStyles {
   static TextStyle titleLarge = GoogleFonts.inter(
     fontSize: 18.sp,
     fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
     letterSpacing: 0.0,
     height: 1.35,
   );
@@ -44,7 +44,7 @@ class AppTextStyles {
   static TextStyle titleMedium = GoogleFonts.inter(
     fontSize: 16.sp,
     fontWeight: FontWeight.w500,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
     letterSpacing: 0.1,
     height: 1.4,
   );
@@ -52,7 +52,7 @@ class AppTextStyles {
   static TextStyle titleSmall = GoogleFonts.inter(
     fontSize: 14.sp,
     fontWeight: FontWeight.w500,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
     letterSpacing: 0.1,
     height: 1.4,
   );
@@ -61,7 +61,7 @@ class AppTextStyles {
   static TextStyle bodyLarge = GoogleFonts.inter(
     fontSize: 16.sp,
     fontWeight: FontWeight.w400,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
     letterSpacing: 0.1,
     height: 1.5,
   );
@@ -69,7 +69,7 @@ class AppTextStyles {
   static TextStyle bodyMedium = GoogleFonts.inter(
     fontSize: 14.sp,
     fontWeight: FontWeight.w400,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
     letterSpacing: 0.1,
     height: 1.5,
   );
@@ -132,24 +132,7 @@ class AppTextStyles {
     height: 1.2,
   );
   
-  // Special Styles
-  static TextStyle caption = GoogleFonts.inter(
-    fontSize: 11.sp,
-    fontWeight: FontWeight.w400,
-    color: AppColors.textTertiary,
-    letterSpacing: 0.3,
-    height: 1.4,
-  );
-  
-  static TextStyle overline = GoogleFonts.inter(
-    fontSize: 10.sp,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textTertiary,
-    letterSpacing: 1.0,
-    height: 1.4,
-  );
-  
-  // Legacy styles (for backward compatibility) - Updated with new colors
+  // Legacy styles (for backward compatibility) - Updated to Dark Brown
   static TextStyle bold18White = GoogleFonts.inter(
     fontSize: 18.sp,
     fontWeight: FontWeight.w700,
@@ -168,10 +151,11 @@ class AppTextStyles {
     color: AppColors.textSecondary,
   );
   
+  // The style used for input fields - Changed from Placeholder color to Dark Brown
   static TextStyle normal16Grey = GoogleFonts.inter(
     fontSize: 16.sp,
     fontWeight: FontWeight.w400,
-    color: AppColors.textPlaceholder,
+    color: AppColors.textPrimary, // This makes the written text Dark Brown
     letterSpacing: 0.1,
   );
   
@@ -197,13 +181,13 @@ class AppTextStyles {
   static TextStyle medium14PrimaryDark = GoogleFonts.inter(
     fontSize: 14.sp,
     fontWeight: FontWeight.w500,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
   );
   
   static TextStyle regular16Dark = GoogleFonts.inter(
     fontSize: 16.sp,
     fontWeight: FontWeight.w400,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
   );
   
   static TextStyle regular14Muted = GoogleFonts.inter(
@@ -221,7 +205,7 @@ class AppTextStyles {
   static TextStyle medium14black = GoogleFonts.inter(
     fontSize: 14.sp,
     fontWeight: FontWeight.w500,
-    color: AppColors.textPrimary,
+    color: AppColors.textPrimary, // Dark Brown
   );
   
   static TextStyle regular12Gray = GoogleFonts.inter(

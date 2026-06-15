@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../widgets/widgets/custom_elevated_button.dart';
+import '../../domain/entities/availability_entity.dart';
+import '../../domain/repos/appointment_repo.dart';
+import 'cubit/booking_view_model.dart';
 import 'doctors_listing_screen.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -20,79 +25,309 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   String? _selectedTime;
+  final BookingViewModel _viewModel = getIt<BookingViewModel>();
 
-  // Mock availability data
-  final List<int> _unavailableDays = [15, 20, 25];
-  final List<String> _timeSlots = [
-    "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM",
-    "11:00 AM", "11:30 AM", "01:00 PM", "01:30 PM",
-    "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM"
+  // Emergency fields
+  String? _selectedEmergencyReason;
+  final TextEditingController _emergencyDescController = TextEditingController();
+  final List<String> _emergencyReasons = [
+    "Severe tooth pain",
+    "Facial swelling",
+    "Bleeding",
+    "Broken tooth / trauma",
+    "Infection symptoms",
+    "Other"
   ];
-  final List<String> _bookedSlots = ["10:30 AM", "02:00 PM"];
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedDay = DateTime(now.year, now.month, now.day);
+    _viewModel.fetchBookedSlots(widget.doctor.id, _selectedDay!);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text("Book Appointment", style: AppTextStyles.titleLarge),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfessionalHeader(),
-            SizedBox(height: 30.h),
-            
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: Text("Select a Date & Time", style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+    return BlocProvider(
+      create: (context) => _viewModel,
+      child: BlocListener<BookingViewModel, BookingState>(
+        listener: (context, state) {
+          if (state is BookingSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Request sent successfully!"), backgroundColor: Colors.green),
+            );
+            Navigator.pop(context);
+          } else if (state is BookingFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            );
+          }
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.backgroundPrimary,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+              onPressed: () => Navigator.pop(context),
             ),
-            SizedBox(height: 16.h),
-            
-            _buildAdvancedCalendarSection(),
-            
-            if (_selectedDay != null) ...[
-              SizedBox(height: 30.h),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.w),
-                child: Text("Available Time Slots", style: AppTextStyles.titleMedium),
-              ),
-              SizedBox(height: 16.h),
-              _buildTimeSlotsGrid(),
-            ],
+            title: Text("Book Appointment", style: AppTextStyles.titleLarge),
+            centerTitle: true,
+          ),
+          body: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProfessionalHeader(),
+                SizedBox(height: 20.h),
 
-            SizedBox(height: 30.h),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: _buildSummaryCard(),
+                // Emergency Button Section
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: _buildEmergencyTrigger(),
+                ),
+
+                SizedBox(height: 30.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Text("Select a Date & Time", style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(height: 16.h),
+                _buildAdvancedCalendarSection(),
+
+                if (_selectedDay != null) ...[
+                  SizedBox(height: 30.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.w),
+                    child: Text("Available Time Slots", style: AppTextStyles.titleMedium),
+                  ),
+                  SizedBox(height: 16.h),
+                  _buildDynamicTimeSlotsGrid(),
+                ],
+
+                SizedBox(height: 30.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: _buildSummaryCard(),
+                ),
+                SizedBox(height: 40.h),
+
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: CustomElevatedButton(
+                    buttonText: "Continue to Payment",
+                    onPressed: (_selectedDay != null && _selectedTime != null)
+                        ? () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.paymentMethod,
+                              arguments: {
+                                'doctor': widget.doctor,
+                                'date': _selectedDay,
+                                'time': _selectedTime,
+                              }
+                            )
+                        : null,
+                    backgroundColor: (_selectedDay != null && _selectedTime != null)
+                        ? AppColors.primaryBlue
+                        : AppColors.grayColor,
+                  ),
+                ),
+                SizedBox(height: 30.h),
+              ],
             ),
-            SizedBox(height: 40.h),
-            
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: CustomElevatedButton(
-                buttonText: "Continue to Payment",
-                onPressed: (_selectedDay != null && _selectedTime != null)
-                    ? () => Navigator.pushNamed(context, AppRoutes.paymentMethod)
-                    : null,
-                backgroundColor: (_selectedDay != null && _selectedTime != null)
-                    ? AppColors.primaryBlue
-                    : AppColors.grayColor,
-              ),
-            ),
-            SizedBox(height: 30.h),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmergencyTrigger() {
+    return Container(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _showEmergencyWarning,
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+        label: Text("Request Emergency Appointment 🚨", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13.sp)),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.red, width: 1.5),
+          padding: EdgeInsets.symmetric(vertical: 14.h),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          backgroundColor: Colors.red.withOpacity(0.05),
+        ),
+      ),
+    );
+  }
+
+  void _showEmergencyWarning() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        title: Row(
+          children: [
+            const Icon(Icons.report_problem, color: Colors.red),
+            SizedBox(width: 10.w),
+            const Text("Emergency Notice"),
           ],
         ),
+        content: const Text(
+          "Emergency appointments are only for urgent dental cases such as severe pain, swelling, bleeding, trauma, or infection. Misuse may cause the clinic to reject the request.",
+          style: TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: TextStyle(color: AppColors.textSecondary))),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showEmergencyForm();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+            child: const Text("Continue"),
+          ),
+        ],
       ),
+    );
+  }
+
+  void _showEmergencyForm() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30.r))),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24.w, right: 24.w, top: 24.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Emergency Details", style: AppTextStyles.titleLarge),
+              SizedBox(height: 20.h),
+              const Text("Reason for Emergency", style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 10.h),
+              DropdownButtonFormField<String>(
+                items: _emergencyReasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                onChanged: (val) => setModalState(() => _selectedEmergencyReason = val),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
+                ),
+              ),
+              SizedBox(height: 20.h),
+              const Text("Description", style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 10.h),
+              TextField(
+                controller: _emergencyDescController,
+                maxLines: 3,
+                onChanged: (val) => setModalState(() {}),
+                decoration: InputDecoration(
+                  hintText: "Describe your emergency briefly",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                ),
+              ),
+              SizedBox(height: 30.h),
+              CustomElevatedButton(
+                buttonText: "Confirm Emergency Request",
+                backgroundColor: (_selectedEmergencyReason != null && _emergencyDescController.text.isNotEmpty)
+                    ? Colors.red
+                    : AppColors.grayColor,
+                onPressed: (_selectedEmergencyReason != null && _emergencyDescController.text.isNotEmpty)
+                    ? () {
+                        Navigator.pop(context);
+                        _viewModel.book(
+                          doctor: widget.doctor,
+                          date: DateTime.now(),
+                          time: "ASAP",
+                          isEmergency: true,
+                          emergencyReason: _selectedEmergencyReason,
+                          emergencyDescription: _emergencyDescController.text,
+                        );
+                      }
+                    : null,
+              ),
+              SizedBox(height: 40.h),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDynamicTimeSlotsGrid() {
+    return StreamBuilder<AvailabilityEntity?>(
+      stream: getIt<AppointmentRepo>().getDoctorAvailability(widget.doctor.id, _selectedDay!),
+      builder: (context, availabilitySnapshot) {
+        return BlocBuilder<BookingViewModel, BookingState>(
+          builder: (context, state) {
+            if (state is BookingLoading || availabilitySnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
+            }
+
+            final List<String> liveSlots = availabilitySnapshot.data?.availableSlots ?? [];
+
+            List<String> bookedSlots = [];
+            if (state is BookedSlotsLoaded) {
+              bookedSlots = state.bookedSlots;
+            }
+
+            final filteredSlots = liveSlots.where((slot) => !bookedSlots.contains(slot)).toList();
+
+            if (filteredSlots.isEmpty) {
+              return Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.r),
+                  child: Text("No available slots for this date.", style: AppTextStyles.bodyMedium),
+                ),
+              );
+            }
+
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 12.h,
+                  crossAxisSpacing: 12.w,
+                  childAspectRatio: 2.2,
+                ),
+                itemCount: filteredSlots.length,
+                itemBuilder: (context, index) {
+                  final time = filteredSlots[index];
+                  final isSelected = _selectedTime == time;
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedTime = time;
+                      });
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primaryBlue : AppColors.cardBackground,
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: isSelected ? AppColors.primaryBlue : AppColors.borderSoft, width: 1.5),
+                      ),
+                      child: Text(
+                        time,
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -103,7 +338,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       decoration: BoxDecoration(
         color: AppColors.whiteColor,
         borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32.r), bottomRight: Radius.circular(32.r)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.blackColor.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +354,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(widget.doctor.name, style: AppTextStyles.titleLarge),
-                  Text("Dental Consultation", style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.w600)),
+                  Text(widget.doctor.specialty, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
                 ],
               ),
             ],
@@ -144,22 +379,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [BoxShadow(color: AppColors.shadowColor, blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: AppColors.blackColor.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         children: [
           _buildCalendarHeader(),
           SizedBox(height: 20.h),
           _buildCalendarGrid(),
-          const Divider(height: 40),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.public, size: 14.r, color: AppColors.textSecondary),
-              SizedBox(width: 8.w),
-              Text("Egypt Standard Time (GMT+2)", style: AppTextStyles.labelSmall),
-            ],
-          ),
         ],
       ),
     );
@@ -221,22 +447,30 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             final day = index - (firstDayOfMonth - 2);
             final date = DateTime(_focusedDay.year, _focusedDay.month, day);
             final isSelected = _selectedDay != null && DateUtils.isSameDay(_selectedDay!, date);
-            final isUnavailable = _unavailableDays.contains(day) || date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+            final isToday = DateUtils.isSameDay(DateTime.now(), date);
+            final isPast = date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
 
             return GestureDetector(
-              onTap: isUnavailable ? null : () => setState(() => _selectedDay = date),
+              onTap: isPast ? null : () {
+                setState(() {
+                  _selectedDay = date;
+                  _selectedTime = null;
+                });
+                _viewModel.fetchBookedSlots(widget.doctor.id, date);
+              },
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primaryBlue : Colors.transparent,
                   shape: BoxShape.circle,
+                  border: isToday && !isSelected ? Border.all(color: AppColors.primaryBlue, width: 1) : null,
                 ),
                 child: Text(
                   "$day",
                   style: AppTextStyles.labelMedium.copyWith(
-                    color: isSelected ? Colors.white : (isUnavailable ? AppColors.textTertiary : AppColors.textPrimary),
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    decoration: isUnavailable ? TextDecoration.lineThrough : null,
+                    color: isSelected ? Colors.white : (isPast ? AppColors.textTertiary : AppColors.textPrimary),
+                    fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
+                    decoration: isPast ? TextDecoration.lineThrough : null,
                   ),
                 ),
               ),
@@ -244,47 +478,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           },
         ),
       ],
-    );
-  }
-
-  Widget _buildTimeSlotsGrid() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24.w),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 12.h,
-          crossAxisSpacing: 12.w,
-          childAspectRatio: 2.2,
-        ),
-        itemCount: _timeSlots.length,
-        itemBuilder: (context, index) {
-          final time = _timeSlots[index];
-          final isBooked = _bookedSlots.contains(time);
-          final isSelected = _selectedTime == time;
-
-          return GestureDetector(
-            onTap: isBooked ? null : () => setState(() => _selectedTime = time),
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primaryBlue : (isBooked ? AppColors.backgroundPrimary : AppColors.cardBackground),
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: isSelected ? AppColors.primaryBlue : AppColors.borderSoft, width: 1.5),
-              ),
-              child: Text(
-                time,
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: isSelected ? Colors.white : (isBooked ? AppColors.textTertiary : AppColors.textPrimary),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 

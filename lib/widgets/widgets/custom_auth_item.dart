@@ -10,7 +10,7 @@ class CustomAuthItem extends StatefulWidget {
   final String text1;
   final String text2;
 
-  CustomAuthItem({super.key, required this.child, required this.text1, required this.text2});
+  const CustomAuthItem({super.key, required this.child, required this.text1, required this.text2});
 
   @override
   State<CustomAuthItem> createState() => _CustomAuthItemState();
@@ -35,18 +35,28 @@ class _CustomAuthItemState extends State<CustomAuthItem> {
                 ),
                 color: AppColors.primaryColor,
               ),
-              height: 320.h,
+              height: 320.h, 
               width: double.infinity,
               child: SafeArea(
                 bottom: false,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Image.asset(AppImages.dentexLogo, height: 100.h, width: 100.w),
+                    Container(
+                      height: 100.h,
+                      width: 100.w,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: AssetImage(AppImages.dentexLogo), // FIXED: Uses Dentix "D" logo
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
                     SizedBox(height: 10.h),
                     Text(widget.text1, style: AppTextStyles.semiBold24White),
-                    Text(widget.text2, style: AppTextStyles.semiBold24White.copyWith(fontSize: 18)),
-                    SizedBox(height: 40.h), // Extra space to prevent overlap issues
+                    Text(widget.text2, style: AppTextStyles.semiBold24White.copyWith(fontSize: 18.sp)),
+                    SizedBox(height: 20.h),
                   ],
                 ),
               ),
