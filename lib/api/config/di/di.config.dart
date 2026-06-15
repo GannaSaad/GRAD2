@@ -221,7 +221,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i399.PatientHomeViewModel>(() =>
         _i399.PatientHomeViewModel(gh<_i1010.GetPatientAppointmentsUseCase>()));
     gh.factory<_i502.PatientDetailsViewModel>(() =>
-        _i502.PatientDetailsViewModel(gh<_i369.GetMedicalRecordsUseCase>()));
+        _i502.PatientDetailsViewModel(
+            gh<_i369.GetMedicalRecordsUseCase>(),
+            gh<_i850.SaveMedicalRecordUseCase>()));
     gh.factory<_i192.SupportViewModel>(
         () => _i192.SupportViewModel(gh<_i879.SendSupportTicketUseCase>()));
     gh.factory<_i264.DecrementInventoryUseCase>(

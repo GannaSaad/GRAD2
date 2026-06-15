@@ -76,7 +76,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     setState(() {
       _selectedToothId = id;
       final data = _toothRecords[id] ??= ToothRecordData();
-      
+
       // Temporarily remove listeners to avoid triggering _updateCurrentToothData while setting text
       _toothDiagnosisController.removeListener(_updateCurrentToothData);
       _toothProcedureController.removeListener(_updateCurrentToothData);
@@ -151,22 +151,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               children: [
                 _buildPatientHeader(),
                 SizedBox(height: 30.h),
-                
+
                 _buildSectionLabel("Select Tooth from Jaw"),
                 SizedBox(height: 16.h),
                 JawChart(
                   selectedTooth: _selectedToothId,
                   onToothTap: _onToothSelected,
                 ),
-                
+
                 if (_selectedToothId != null) ...[
                   SizedBox(height: 30.h),
                   _buildSectionLabel("Tooth #$_selectedToothId Details"),
                   SizedBox(height: 16.h),
-                  
+
                   _buildStatusSelector(),
                   SizedBox(height: 20.h),
-                  
+
                   _buildInputContainer(
                     child: CustomTextFormField(
                       hintText: "Tooth Diagnosis",
@@ -175,7 +175,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                     ),
                   ),
                   SizedBox(height: 16.h),
-                  
+
                   _buildInputContainer(
                     child: CustomTextFormField(
                       hintText: "Procedure Performed",
@@ -184,7 +184,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                     ),
                   ),
                   SizedBox(height: 16.h),
-                  
+
                   _buildInputContainer(
                     child: CustomTextFormField(
                       hintText: "Specific Treatment Plan",
@@ -195,10 +195,10 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 ],
 
                 const Divider(height: 60),
-                
+
                 _buildSectionLabel("General Information"),
                 SizedBox(height: 16.h),
-                
+
                 _buildSectionLabelSmall("Prescriptions"),
                 SizedBox(height: 12.h),
                 _buildInputContainer(
@@ -214,7 +214,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 _buildSectionLabelSmall("X-Rays & Imaging"),
                 SizedBox(height: 12.h),
                 _buildImagingSection(),
-                
+
                 SizedBox(height: 24.h),
                 _buildSectionLabelSmall("General Clinical Notes"),
                 SizedBox(height: 12.h),
@@ -226,7 +226,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                     prefixIcon: const Icon(Icons.notes),
                   ),
                 ),
-                
+
                 SizedBox(height: 40.h),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -394,9 +394,9 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                   ),
                 ),
                 Icon(
-                  selectedImages.isNotEmpty ? Icons.add_a_photo : Icons.cloud_upload_outlined, 
-                  color: AppColors.primaryBlue, 
-                  size: 24.r
+                    selectedImages.isNotEmpty ? Icons.add_a_photo : Icons.cloud_upload_outlined,
+                    color: AppColors.primaryBlue,
+                    size: 24.r
                 ),
               ],
             ),
