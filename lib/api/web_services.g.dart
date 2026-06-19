@@ -13,7 +13,7 @@ class _WebServices implements WebServices {
     this._dio, {
     this.baseUrl,
   }) {
-    baseUrl ??= 'https://dentex-ai-40233588836.us-central1.run.app/';
+    baseUrl ??= 'http://34.69.175.48:8000/';
   }
 
   final Dio _dio;

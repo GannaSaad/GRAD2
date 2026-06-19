@@ -7,7 +7,7 @@ import 'models/doctor_clinical_response.dart';
 
 part 'web_services.g.dart';
 
-@RestApi(baseUrl: "https://dentex-ai-40233588836.us-central1.run.app/")
+@RestApi(baseUrl: "http://34.69.175.48:8000/")
 abstract class WebServices {
   factory WebServices(Dio dio, {String? baseUrl}) = _WebServices;
 

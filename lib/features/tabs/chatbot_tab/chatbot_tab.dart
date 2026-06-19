@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -18,22 +17,16 @@ class ChatBotTab extends StatefulWidget {
 class _ChatBotTabState extends State<ChatBotTab> {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
-  // --- 🌐 LOCAL CONNECTION SETTINGS ---
-  bool _isLocalMode = true; 
-  String _localIp = "10.5.163.132"; // Your backend laptop IP
-  String _port = "8000"; 
-  // ------------------------------------
 
   final List<Map<String, String>> _messages = [
     {
       "role": "shagy",
-      "content": "Hello! I am Dr. Shagy. I am now connected to your laptop! How can I help you today? ✨"
+      "content": "Hello! I am Dr. Shagy, your AI dental assistant. How can I help you today? ✨"
     }
   ];
   
   bool _isTyping = false;
-  final WebServices _cloudWebServices = getIt<WebServices>();
+  final WebServices _webServices = getIt<WebServices>();
 
   final List<String> _recommendedQuestions = [
     "How to whiten teeth?",
@@ -41,18 +34,6 @@ class _ChatBotTabState extends State<ChatBotTab> {
     "Best brushing habits",
     "Tooth sensitivity tips"
   ];
-
-  WebServices get _activeWebServices {
-    if (_isLocalMode && _localIp.isNotEmpty) {
-      String baseUrl = _localIp;
-      if (!baseUrl.startsWith("http")) {
-        baseUrl = "http://$baseUrl:$_port/";
-      }
-      if (!baseUrl.endsWith("/")) baseUrl += "/";
-      return WebServices(getIt<Dio>(), baseUrl: baseUrl);
-    }
-    return _cloudWebServices;
-  }
 
   Future<void> _sendMessage([String? textOverride]) async {
     final text = textOverride ?? _chatController.text.trim();
@@ -67,7 +48,7 @@ class _ChatBotTabState extends State<ChatBotTab> {
     _scrollToBottom();
 
     try {
-      final response = await _activeWebServices.getShagyReply({"message": text});
+      final response = await _webServices.getShagyReply({"message": text});
       
       if (mounted) {
         setState(() {
@@ -78,72 +59,16 @@ class _ChatBotTabState extends State<ChatBotTab> {
       }
     } catch (e) {
       if (mounted) {
-        String finalAnswer = "";
-        
-        if (e is DioException) {
-          if (e.response != null) {
-            finalAnswer = "Parsing Error! 🚨\n\nYour laptop sent data, but I couldn't read it.\n\nRAW DATA: ${e.response?.data}\n\nFIX: Ensure Python returns {'reply': 'text'}";
-          } else {
-            finalAnswer = "Connection Failed 🚨\n\nCheck:\n1. Same Wi-Fi?\n2. Did you run with --host 0.0.0.0?\n3. Firewall OFF?";
-          }
-        } else {
-          finalAnswer = "Unexpected Error: $e";
-        }
-
         setState(() {
-          _messages.add({"role": "shagy", "content": finalAnswer});
+          _messages.add({
+            "role": "shagy",
+            "content": "Sorry, I'm having trouble connecting right now. Please try again later."
+          });
           _isTyping = false;
         });
         _scrollToBottom();
       }
     }
-  }
-
-  void _showConnectionSettings() {
-    final ipController = TextEditingController(text: _localIp);
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
-          title: Text("Advanced AI Settings", style: AppTextStyles.titleMedium),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SwitchListTile(
-                title: const Text("Use Local Model"),
-                value: _isLocalMode,
-                activeColor: AppColors.primaryBlue,
-                onChanged: (val) => setDialogState(() => _isLocalMode = val),
-              ),
-              if (_isLocalMode) ...[
-                SizedBox(height: 10.h),
-                TextField(
-                  controller: ipController,
-                  decoration: InputDecoration(
-                    labelText: "Laptop IP",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _localIp = ipController.text.trim();
-                });
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r))),
-              child: const Text("Save"),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _scrollToBottom() {
@@ -163,30 +88,29 @@ class _ChatBotTabState extends State<ChatBotTab> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: GestureDetector(
-          onTap: _showConnectionSettings, 
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 32.r,
-                width: 32.r,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: DecorationImage(
-                    image: AssetImage(AppImages.shagyLogo),
-                    fit: BoxFit.cover,
-                  ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 32.r,
+              width: 32.r,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                image: DecorationImage(
+                  image: AssetImage(AppImages.shagyLogo),
+                  fit: BoxFit.cover,
                 ),
               ),
-              SizedBox(width: 10.w),
-              Text("Dentix Shagy", style: AppTextStyles.titleMedium.copyWith(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
-              if (_isLocalMode) ...[
-                SizedBox(width: 6.w),
-                const Icon(Icons.lan_outlined, size: 16, color: Colors.orange),
-              ],
-            ],
-          ),
+            ),
+            SizedBox(width: 10.w),
+            Text(
+              "Dentix Shagy",
+              style: AppTextStyles.titleMedium.copyWith(
+                color: AppColors.primaryBlue,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.8),
         elevation: 0,
