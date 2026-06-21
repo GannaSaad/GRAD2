@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_routes.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import '../../../core/widgets/star_rating.dart';
+import '../../../domain/use_cases/get_doctor_reviews_use_case.dart';
 import '../../../widgets/widgets/custom_elevated_button.dart';
 import 'doctors_listing_screen.dart';
 
@@ -41,7 +44,7 @@ class DoctorProfileScreen extends StatelessWidget {
                     SizedBox(height: 24.h),
                     _buildListSection("Certifications", doctor.certifications, Icons.verified_outlined),
                     SizedBox(height: 30.h),
-                    _buildReviewsSection(),
+                    _buildReviewsSection(context),
                     SizedBox(height: 40.h),
                     CustomElevatedButton(
                       buttonText: "Book Appointment",
@@ -165,53 +168,118 @@ class DoctorProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReviewsSection() {
-    final reviews = [
-      {"user": "Ahmed M.", "rating": 5, "comment": "Excellent experience, very professional Professor. The implant procedure was painless."},
-      {"user": "Sarah K.", "rating": 4, "comment": "Highly skilled specialist. Explained everything clearly during my scaling session."},
-    ];
+  Widget _buildReviewsSection(BuildContext context) {
+    try {
+      final getReviewsUseCase = getIt<GetDoctorReviewsUseCase>();
+      
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Patient Reviews", style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryBlue)),
+          SizedBox(height: 16.h),
+          StreamBuilder(
+            stream: getReviewsUseCase.call(doctor.id),
+            builder: (context, snapshot) {
+              // Show loading only briefly
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return SizedBox(
+                  height: 50.h,
+                  child: const Center(child: CircularProgressIndicator()),
+                );
+              }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("Patient Reviews", style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryBlue)),
-            Text("See All", style: AppTextStyles.labelMedium.copyWith(color: AppColors.primaryBlue)),
-          ],
-        ),
-        SizedBox(height: 16.h),
-        ...reviews.map((rev) => Container(
-          margin: EdgeInsets.only(bottom: 12.h),
-          padding: EdgeInsets.all(12.r),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(16.r),
-            border: Border.all(color: AppColors.borderSoft),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(rev['user'] as String, style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.bold)),
-                  Row(
-                    children: List.generate(5, (index) => Icon(
-                      Icons.star, 
-                      size: 14.r, 
-                      color: index < (rev['rating'] as int) ? Colors.amber : AppColors.borderSoft
-                    )),
+              // On error or empty, show placeholder
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return Container(
+                  padding: EdgeInsets.all(20.r),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(color: AppColors.borderSoft),
                   ),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(Icons.rate_review_outlined, size: 40.r, color: AppColors.textSecondary),
+                        SizedBox(height: 8.h),
+                        Text("No reviews yet", style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        Text("Be the first to review!", style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final reviews = snapshot.data!.take(2).toList();
+
+              return Column(
+                children: reviews.map((review) => Container(
+                  margin: EdgeInsets.only(bottom: 12.h),
+                  padding: EdgeInsets.all(12.r),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(color: AppColors.borderSoft),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16.r,
+                            backgroundColor: AppColors.primaryBlueSoft,
+                            child: Text(
+                              review.patientName.substring(0, 1).toUpperCase(),
+                              style: TextStyle(color: AppColors.primaryBlue, fontSize: 12.sp),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: Text(
+                              review.patientName, 
+                              style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.bold)
+                            ),
+                          ),
+                          StarRating(rating: review.rating, size: 14),
+                        ],
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(review.comment, style: AppTextStyles.bodySmall, maxLines: 3, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                )).toList(),
+              );
+            },
+          ),
+        ],
+      );
+    } catch (e) {
+      // If GetIt fails, show placeholder
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Patient Reviews", style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryBlue)),
+          SizedBox(height: 16.h),
+          Container(
+            padding: EdgeInsets.all(20.r),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: AppColors.borderSoft),
+            ),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(Icons.rate_review_outlined, size: 40.r, color: AppColors.textSecondary),
+                  SizedBox(height: 8.h),
+                  Text("No reviews yet", style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
                 ],
               ),
-              SizedBox(height: 8.h),
-              Text(rev['comment'] as String, style: AppTextStyles.bodySmall),
-            ],
+            ),
           ),
-        )),
-      ],
-    );
+        ],
+      );
+    }
   }
 }

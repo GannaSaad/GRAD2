@@ -44,6 +44,9 @@ dependencies:
   geolocator: ^13.0.2
   google_generative_ai: ^0.4.6
   uuid: ^4.5.1
+  record: ^5.1.0
+  path_provider: ^2.1.5
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:
@@ -53,6 +56,10 @@ dev_dependencies:
   injectable_generator: ^2.0.0
   retrofit_generator: ^8.2.1
   json_serializable: ^6.6.0
+
+dependency_overrides:
+  record_linux: ^2.1.0
+  record_platform_interface: ^2.1.0
 
 flutter:
   uses-material-design: true

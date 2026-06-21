@@ -6,7 +6,7 @@ import '../../core/core/utils/app_assets.dart';
 import '../../core/core/utils/app_colors.dart';
 import '../tabs/activity_tab/activity_tab.dart';
 import '../tabs/chatbot_tab/chatbot_tab.dart';
-import '../tabs/chatbot_tab/doctor_chatbot_tab.dart';
+import '../tabs/doctor_chatbot_tab/doctor_chatbot_tab.dart';
 import '../tabs/home_tab/home_tab.dart';
 import '../tabs/profile_tab/profile_tab.dart';
 import '../doctors/doctors_listing_screen.dart';

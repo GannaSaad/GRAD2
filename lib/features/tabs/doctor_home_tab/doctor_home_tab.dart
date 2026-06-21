@@ -6,6 +6,7 @@ import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../domain/entities/appointment_entity.dart';
+import '../../../domain/repos/appointment_repo.dart';
 import '../../auth/auth_cubit/auth_cubit.dart';
 import 'cubit/doctor_home_view_model.dart';
 
@@ -20,11 +21,39 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDate = DateTime.now();
   final DoctorHomeViewModel _viewModel = getIt<DoctorHomeViewModel>();
+  
+  // Track which patients have completed appointments
+  final Map<String, bool> _hasCompletedAppointments = {};
 
   @override
   void initState() {
     super.initState();
     _viewModel.getAppointments();
+  }
+  
+  // Check if patient has any completed appointments before this date
+  Future<bool> _checkPatientHasCompletedAppointments(String patientId, DateTime currentAppointmentDate) async {
+    // Check cache first
+    if (_hasCompletedAppointments.containsKey(patientId)) {
+      return _hasCompletedAppointments[patientId]!;
+    }
+    
+    // Get all appointments for this patient
+    try {
+      final repo = getIt<AppointmentRepo>();
+      final appointments = await repo.getPatientAppointments(patientId).first;
+      
+      // Check if there's any completed appointment before this date
+      final hasCompleted = appointments.any((apt) => 
+        apt.status == 'Completed' && apt.date.isBefore(currentAppointmentDate)
+      );
+      
+      // Cache the result
+      _hasCompletedAppointments[patientId] = hasCompleted;
+      return hasCompleted;
+    } catch (e) {
+      return false;
+    }
   }
 
   @override
@@ -297,7 +326,14 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: appointments.length,
             itemBuilder: (context, index) {
-              return _buildAppointmentCard(appointments[index]);
+              final appointment = appointments[index];
+              return FutureBuilder<bool>(
+                future: _checkPatientHasCompletedAppointments(appointment.patientId, appointment.date),
+                builder: (context, snapshot) {
+                  final isFollowUp = snapshot.data ?? false;
+                  return _buildAppointmentCard(appointment, isFollowUp);
+                },
+              );
             },
           );
         }
@@ -306,24 +342,36 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
     );
   }
 
-  Widget _buildAppointmentCard(AppointmentEntity appointment) {
+  Widget _buildAppointmentCard(AppointmentEntity appointment, bool isFollowUp) {
     // Detect emergency from boolean flag OR specific status string
     final bool isEmergency = appointment.isEmergency || 
                              appointment.status == 'Emergency Request Pending';
+    final bool isCancelled = appointment.status == 'Cancelled';
     final bool hasRealPhoto = appointment.patientImage != null && 
                              appointment.patientImage!.startsWith('http');
+    
+    // Determine consultation type
+    final String consultationType = isFollowUp ? "Follow-up Consultation" : "Initial Consultation";
+    final Color consultationColor = isFollowUp ? AppColors.primaryBlue : Colors.green;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       margin: EdgeInsets.only(bottom: 20.h),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: isCancelled 
+            ? AppColors.cardBackground.withOpacity(0.5)
+            : AppColors.cardBackground,
         borderRadius: BorderRadius.circular(24.r),
+        border: isCancelled 
+            ? Border.all(color: Colors.red.withOpacity(0.5), width: 2)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: isEmergency 
-                ? AppColors.error.withValues(alpha: 0.15) 
-                : AppColors.shadowColor.withValues(alpha: 0.05),
+            color: isCancelled
+                ? Colors.red.withOpacity(0.05)
+                : isEmergency 
+                    ? AppColors.error.withValues(alpha: 0.15) 
+                    : AppColors.shadowColor.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -335,7 +383,7 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (isEmergency)
+              if (isEmergency && !isCancelled)
                 Container(
                   width: 6.w,
                   decoration: const BoxDecoration(
@@ -353,7 +401,10 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                     children: [
                       Row(
                         children: [
-                          _buildAvatar(appointment, hasRealPhoto),
+                          Opacity(
+                            opacity: isCancelled ? 0.5 : 1.0,
+                            child: _buildAvatar(appointment, hasRealPhoto),
+                          ),
                           SizedBox(width: 16.w),
                           Expanded(
                             child: Column(
@@ -366,12 +417,35 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                                         appointment.patientName, 
                                         style: AppTextStyles.titleMedium.copyWith(
                                           fontWeight: FontWeight.bold,
-                                          color: AppColors.textPrimary,
+                                          color: isCancelled 
+                                              ? AppColors.textSecondary 
+                                              : AppColors.textPrimary,
+                                          decoration: isCancelled 
+                                              ? TextDecoration.lineThrough 
+                                              : null,
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    if (isEmergency) ...[
+                                    if (isCancelled) ...[
+                                      SizedBox(width: 8.w),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius: BorderRadius.circular(6.r),
+                                        ),
+                                        child: Text(
+                                          "CANCELLED",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 9.sp,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    if (isEmergency && !isCancelled) ...[
                                       SizedBox(width: 8.w),
                                       Container(
                                         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
@@ -394,13 +468,24 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                                 SizedBox(height: 4.h),
                                 Row(
                                   children: [
-                                    Icon(Icons.access_time_rounded, size: 14.r, color: AppColors.textSecondary),
+                                    Icon(
+                                      Icons.access_time_rounded, 
+                                      size: 14.r, 
+                                      color: isCancelled 
+                                          ? AppColors.textSecondary.withOpacity(0.5)
+                                          : AppColors.textSecondary,
+                                    ),
                                     SizedBox(width: 4.w),
                                     Text(
                                       appointment.time,
                                       style: AppTextStyles.labelSmall.copyWith(
-                                        color: AppColors.textSecondary,
+                                        color: isCancelled
+                                            ? AppColors.textSecondary.withOpacity(0.5)
+                                            : AppColors.textSecondary,
                                         fontWeight: FontWeight.w600,
+                                        decoration: isCancelled 
+                                            ? TextDecoration.lineThrough 
+                                            : null,
                                       ),
                                     ),
                                   ],
@@ -411,22 +496,51 @@ class _DoctorHomeTabState extends State<DoctorHomeTab> {
                         ],
                       ),
                       SizedBox(height: 12.h),
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundPrimary.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Text(
-                          appointment.caseDescription,
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                            height: 1.3,
+                      // Only show case description if it's not the default "Initial Consultation"
+                      if (appointment.caseDescription.trim().toLowerCase() != "initial consultation") ...[
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundPrimary.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          child: Text(
+                            appointment.caseDescription,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: isCancelled
+                                  ? AppColors.textSecondary.withOpacity(0.5)
+                                  : AppColors.textSecondary,
+                              height: 1.3,
+                              decoration: isCancelled 
+                                  ? TextDecoration.lineThrough 
+                                  : null,
+                            ),
                           ),
                         ),
-                      ),
-                      if (isEmergency) ...[
+                        SizedBox(height: 8.h),
+                      ],
+                      if (!isCancelled) ...[
+                        SizedBox(height: 12.h),
+                        Row(
+                          children: [
+                            Icon(
+                              isFollowUp ? Icons.replay_rounded : Icons.fiber_new_rounded,
+                              size: 16.r,
+                              color: consultationColor,
+                            ),
+                            SizedBox(width: 6.w),
+                            Text(
+                              consultationType,
+                              style: AppTextStyles.labelMedium.copyWith(
+                                color: consultationColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (isEmergency && !isCancelled) ...[
                         SizedBox(height: 16.h),
                         Container(
                           padding: EdgeInsets.all(12.r),

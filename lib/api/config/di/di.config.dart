@@ -122,7 +122,6 @@ import '../../data_sources/remote/request_remote_data_source_impl.dart'
 import '../../data_sources/remote/support_remote_data_source_impl.dart'
     as _i808;
 import '../../web_services.dart' as _i288;
-import 'firebase_module.dart' as _i616;
 import 'network_module.dart' as _i567;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -136,10 +135,9 @@ extension GetItInjectableX on _i174.GetIt {
       environment,
       environmentFilter,
     );
-    final firebaseModule = _$FirebaseModule();
     final networkModule = _$NetworkModule();
-    gh.lazySingleton<_i59.FirebaseAuth>(() => firebaseModule.firebaseAuth);
-    gh.lazySingleton<_i974.FirebaseFirestore>(() => firebaseModule.firestore);
+    gh.lazySingleton<_i59.FirebaseAuth>(() => _i59.FirebaseAuth.instance);
+    gh.lazySingleton<_i974.FirebaseFirestore>(() => _i974.FirebaseFirestore.instance);
     gh.lazySingleton<_i361.Dio>(() => networkModule.dio);
     gh.lazySingleton<_i288.WebServices>(
         () => networkModule.getWebServices(gh<_i361.Dio>()));
@@ -298,7 +296,5 @@ extension GetItInjectableX on _i174.GetIt {
     return this;
   }
 }
-
-class _$FirebaseModule extends _i616.FirebaseModule {}
 
 class _$NetworkModule extends _i567.NetworkModule {}

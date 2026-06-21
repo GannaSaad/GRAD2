@@ -6,6 +6,9 @@ import '../../../api/config/di/di.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../domain/entities/appointment_entity.dart';
+import '../../../domain/repos/review_repo.dart';
+import '../../auth/auth_cubit/auth_cubit.dart';
+import '../../reviews/add_review_dialog.dart';
 import 'cubit/activity_view_model.dart';
 
 class ActivityTab extends StatefulWidget {
@@ -130,6 +133,66 @@ class _ActivityTabState extends State<ActivityTab> with SingleTickerProviderStat
         ],
       ),
     );
+  }
+
+  Future<void> _showReviewDialog(AppointmentEntity appointment) async {
+    print('🔍 DEBUG: Review button clicked');
+    print('Doctor ID: ${appointment.doctorId}');
+    print('Doctor Name: ${appointment.doctorName}');
+    
+    final user = getIt<AuthCubit>().currentUser;
+    if (user == null) {
+      print('❌ User not found');
+      return;
+    }
+    
+    print('✅ User: ${user.uid}');
+
+    try {
+      // Check if already reviewed
+      final reviewRepo = getIt<ReviewRepo>();
+      print('✅ ReviewRepo fetched');
+      
+      final hasReviewed = await reviewRepo.hasReviewedDoctor(user.uid, appointment.doctorId);
+      print('Has reviewed: $hasReviewed');
+
+      if (hasReviewed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You already reviewed this doctor'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      if (mounted) {
+        print('🎨 Showing dialog...');
+        final result = await showDialog<bool>(
+          context: context,
+          builder: (context) => AddReviewDialog(
+            doctorId: appointment.doctorId,
+            doctorName: appointment.doctorName,
+          ),
+        );
+
+        if (result == true && mounted) {
+          setState(() {}); // Refresh to update button state
+        }
+      }
+    } catch (e, stackTrace) {
+      print('❌ ERROR: $e');
+      print('Stack trace: $stackTrace');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -337,6 +400,24 @@ class _ActivityTabState extends State<ActivityTab> with SingleTickerProviderStat
                   ),
                 ),
               ],
+            ),
+          ],
+          // Show "Rate Doctor" button for completed appointments
+          if (isPrevious && appointment.status == 'Completed') ...[
+            const Divider(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showReviewDialog(appointment),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                ),
+                icon: const Icon(Icons.star, size: 20),
+                label: Text("Rate Doctor", style: AppTextStyles.buttonSmall.copyWith(color: Colors.white)),
+              ),
             ),
           ],
         ],

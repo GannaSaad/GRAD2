@@ -13,7 +13,7 @@ class _WebServices implements WebServices {
     this._dio, {
     this.baseUrl,
   }) {
-    baseUrl ??= 'http://34.69.175.48:8000/';
+    baseUrl ??= 'http://104.198.50.23:8001/';
   }
 
   final Dio _dio;
@@ -49,7 +49,35 @@ class _WebServices implements WebServices {
   }
 
   @override
-  Future<DoctorClinicalResponse> doctorChatWithImage(
+  Future<DoctorChatResponse> getDoctorReply(Map<String, dynamic> body) async {
+    const _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body);
+    final _result = await _dio
+        .fetch<Map<String, dynamic>>(_setStreamType<DoctorChatResponse>(Options(
+      method: 'POST',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/doctor/chat-text',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final value = DoctorChatResponse.fromJson(_result.data!);
+    return value;
+  }
+
+  @override
+  Future<DoctorChatResponse> doctorChatWithImage(
     File image,
     String? question,
   ) async {
@@ -72,7 +100,7 @@ class _WebServices implements WebServices {
       ));
     }
     final _result = await _dio.fetch<Map<String, dynamic>>(
-        _setStreamType<DoctorClinicalResponse>(Options(
+        _setStreamType<DoctorChatResponse>(Options(
       method: 'POST',
       headers: _headers,
       extra: _extra,
@@ -89,31 +117,28 @@ class _WebServices implements WebServices {
               _dio.options.baseUrl,
               baseUrl,
             ))));
-    final value = DoctorClinicalResponse.fromJson(_result.data!);
+    final value = DoctorChatResponse.fromJson(_result.data!);
     return value;
   }
 
   @override
   Future<PredictionResponse> getNoShowPrediction(
-    int appointments,
-    int cancellations,
+    Map<String, dynamic> body,
   ) async {
     const _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{
-      r'appointments': appointments,
-      r'cancellations': cancellations,
-    };
+    final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
-    final Map<String, dynamic>? _data = null;
+    final _data = <String, dynamic>{};
+    _data.addAll(body);
     final _result = await _dio
         .fetch<Map<String, dynamic>>(_setStreamType<PredictionResponse>(Options(
-      method: 'GET',
+      method: 'POST',
       headers: _headers,
       extra: _extra,
     )
             .compose(
               _dio.options,
-              '/predict',
+              'http://104.198.50.23:8002/predict',
               queryParameters: queryParameters,
               data: _data,
             )
@@ -123,6 +148,41 @@ class _WebServices implements WebServices {
               baseUrl,
             ))));
     final value = PredictionResponse.fromJson(_result.data!);
+    return value;
+  }
+
+  @override
+  Future<Map<String, dynamic>> voiceToRecord(File audioFile) async {
+    const _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = FormData();
+    _data.files.add(MapEntry(
+      'file',
+      MultipartFile.fromFileSync(
+        audioFile.path,
+        filename: audioFile.path.split(Platform.pathSeparator).last,
+      ),
+    ));
+    final _result = await _dio.fetch<Map<String, dynamic>>(
+        _setStreamType<Map<String, dynamic>>(Options(
+      method: 'POST',
+      headers: _headers,
+      extra: _extra,
+      contentType: 'multipart/form-data',
+    )
+            .compose(
+              _dio.options,
+              '/api/voice-to-record',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final value = _result.data!;
     return value;
   }
 

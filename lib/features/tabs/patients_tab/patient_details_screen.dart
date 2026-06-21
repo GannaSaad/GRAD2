@@ -4,7 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../api/config/di/di.dart';
+import '../../../api/web_services.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
 import '../../../domain/entities/medical_record_entity.dart';
@@ -44,8 +48,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   bool _imagesUploading = false;
   
   // Voice AI Assistant
+  final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isListening = false;
-  String _currentField = ''; // 'diagnosis', 'procedure', or 'plan'
+  String _currentField = '';
+  String? _audioPath;
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -59,6 +66,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     _diagnosisController.dispose();
     _procedureController.dispose();
     _planController.dispose();
+    _audioRecorder.dispose();
     super.dispose();
   }
 
@@ -89,37 +97,169 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     }
   }
 
-  void _startListening(String field) {
-    setState(() {
-      _isListening = true;
-      _currentField = field;
-    });
-    // TODO: Start recording audio
-    // When done, send audio to your AI model
-    // Model returns transcript with extracted fields:
-    // { diagnosis: "...", procedure: "...", plan: "..." }
-    // Then call _fillFieldsFromTranscript(extractedData)
+  Future<void> _startListening(String field) async {
+    print('DEBUG: _startListening called with field: $field');
+    
+    try {
+      // Request microphone permission
+      final status = await Permission.microphone.request();
+      print('DEBUG: Microphone permission status: $status');
+      
+      if (!status.isGranted) {
+        print('DEBUG: Permission not granted');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Microphone permission is required for voice recording"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      print('DEBUG: Starting recording...');
+      // Get temporary directory for audio file
+      final directory = await getTemporaryDirectory();
+      _audioPath = '${directory.path}/dental_voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      print('DEBUG: Audio path: $_audioPath');
+
+      // Start recording
+      await _audioRecorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: 128000,
+          sampleRate: 44100,
+        ),
+        path: _audioPath!,
+      );
+
+      setState(() {
+        _isListening = true;
+        _currentField = field;
+      });
+      print('DEBUG: Recording started successfully');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("🎤 Recording started..."),
+            backgroundColor: AppColors.primaryBlue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('DEBUG: Error starting recording: $e');
+      print('DEBUG: Stack trace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to start recording: $e"),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 
-  void _stopListening() {
-    setState(() {
-      _isListening = false;
-    });
-    // TODO: Stop recording, send to AI model for processing
+  Future<void> _stopListening() async {
+    try {
+      // Stop recording
+      await _audioRecorder.stop();
+      
+      setState(() {
+        _isListening = false;
+        _isProcessing = true;
+      });
+
+      if (_audioPath == null || !File(_audioPath!).existsSync()) {
+        throw Exception("Audio file not found");
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Processing audio..."),
+            backgroundColor: AppColors.primaryBlue,
+          ),
+        );
+      }
+
+      // Send audio to backend
+      final webServices = getIt<WebServices>();
+      print('DEBUG: Sending audio to API...');
+      final response = await webServices.voiceToRecord(File(_audioPath!));
+      print('DEBUG: API Response: $response');
+      print('DEBUG: diagnosis: ${response['diagnosis']}');
+      print('DEBUG: procedure_performed: ${response['procedure_performed']}');
+      print('DEBUG: treatment_plan: ${response['treatment_plan']}');
+
+      // Parse response and fill fields
+      _fillFieldsFromTranscript({
+        'diagnosis': response['diagnosis'] ?? '',
+        'procedure': response['procedure_performed'] ?? '',
+        'plan': response['treatment_plan'] ?? '',
+      });
+
+      setState(() {
+        _isProcessing = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ Voice transcribed successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      // Clean up audio file
+      if (_audioPath != null) {
+        File(_audioPath!).delete();
+      }
+    } catch (e) {
+      setState(() {
+        _isProcessing = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to process audio: $e"),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 
   void _fillFieldsFromTranscript(Map<String, String> extractedData) {
+    print('DEBUG: _fillFieldsFromTranscript called with: $extractedData');
+    print('DEBUG: diagnosis isEmpty: ${extractedData['diagnosis']?.isEmpty}');
+    print('DEBUG: procedure isEmpty: ${extractedData['procedure']?.isEmpty}');
+    print('DEBUG: plan isEmpty: ${extractedData['plan']?.isEmpty}');
+    
     setState(() {
-      if (extractedData['diagnosis'] != null) {
+      if (extractedData['diagnosis']?.isNotEmpty ?? false) {
+        print('DEBUG: Setting diagnosis to: ${extractedData['diagnosis']}');
         _diagnosisController.text = extractedData['diagnosis']!;
       }
-      if (extractedData['procedure'] != null) {
+      if (extractedData['procedure']?.isNotEmpty ?? false) {
+        print('DEBUG: Setting procedure to: ${extractedData['procedure']}');
         _procedureController.text = extractedData['procedure']!;
       }
-      if (extractedData['plan'] != null) {
+      if (extractedData['plan']?.isNotEmpty ?? false) {
+        print('DEBUG: Setting plan to: ${extractedData['plan']}');
         _planController.text = extractedData['plan']!;
       }
     });
+    print('DEBUG: After setState - diagnosis controller: ${_diagnosisController.text}');
+    print('DEBUG: After setState - procedure controller: ${_procedureController.text}');
+    print('DEBUG: After setState - plan controller: ${_planController.text}');
   }
 
   @override
@@ -806,11 +946,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   }
 
   Widget _buildSingleVoiceDictationButton() {
+    final isActive = _isListening || _isProcessing;
+    
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: _isListening
+        boxShadow: isActive
             ? [
                 BoxShadow(
                   color: AppColors.primaryBlue.withOpacity(0.3),
