@@ -35,7 +35,7 @@ class _WebServices implements WebServices {
     )
             .compose(
               _dio.options,
-              '/chat',
+              'http://104.198.50.23:8000/chat',
               queryParameters: queryParameters,
               data: _data,
             )

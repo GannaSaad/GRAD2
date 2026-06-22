@@ -12,7 +12,8 @@ part 'web_services.g.dart';
 abstract class WebServices {
   factory WebServices(Dio dio, {String? baseUrl}) = _WebServices;
 
-  @POST("/chat")
+  // Patient chatbot on port 8000
+  @POST("http://104.198.50.23:8000/chat")
   Future<ChatResponse> getShagyReply(@Body() Map<String, dynamic> body);
 
   @POST("/doctor/chat-text")

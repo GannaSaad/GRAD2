@@ -12,10 +12,10 @@ import '../../auth_cubit/auth_states.dart';
 class LoginViewModel extends Cubit<AuthState> {
   // Pre-filled for development - ensure these are cleared for production
   TextEditingController emailController = TextEditingController(
-    text: 'shahdharera2011@gmail.com',
+    text: 'hanaelashry20@gmail.com',
   );
   TextEditingController passwordController = TextEditingController(
-    text: "Har1234@",
+    text: "Hana123@",
   );
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();

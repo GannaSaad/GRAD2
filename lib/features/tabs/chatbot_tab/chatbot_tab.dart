@@ -6,6 +6,7 @@ import '../../../api/web_services.dart';
 import '../../../core/core/utils/app_assets.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChatBotTab extends StatefulWidget {
   const ChatBotTab({super.key});
@@ -48,8 +49,16 @@ class _ChatBotTabState extends State<ChatBotTab> {
     _scrollToBottom();
 
     try {
-      final response = await _webServices.getShagyReply({"message": text});
-      
+      final user = FirebaseAuth.instance.currentUser;
+      final body = {
+        "message": text,
+        "patient_id": user?.uid ?? "",
+        "patient_name": user?.displayName ?? "Mobile Patient",
+      };
+
+      debugPrint("🔥 CHATBOT BODY = $body");
+
+      final response = await _webServices.getShagyReply(body);
       if (mounted) {
         setState(() {
           _messages.add({"role": "shagy", "content": response.reply});
