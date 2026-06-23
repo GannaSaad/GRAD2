@@ -32,7 +32,8 @@ abstract class WebServices {
     @Body() Map<String, dynamic> body,
   );
 
-  @POST("/api/voice-to-record")
+  // Speech-to-text on separate API (port 8003)
+  @POST("http://104.198.50.23:8003/api/voice-to-record")
   @MultiPart()
   Future<Map<String, dynamic>> voiceToRecord(
     @Part(name: "file") File audioFile,

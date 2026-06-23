@@ -81,6 +81,11 @@ class PatientDetailsViewModel extends Cubit<PatientDetailsState> {
     List<File>? intraoralImages,
   }) async {
     try {
+      print('🚀 Starting image upload process...');
+      print('👤 Patient: $patientName');
+      print('📸 Panoramic images: ${panoramicImages?.length ?? 0}');
+      print('📸 Intraoral images: ${intraoralImages?.length ?? 0}');
+      
       emit(PatientDetailsUploadingImages());
       
       final List<String> panoramicUrls = [];
@@ -88,21 +93,46 @@ class PatientDetailsViewModel extends Cubit<PatientDetailsState> {
 
       // Upload panoramic images
       if (panoramicImages != null && panoramicImages.isNotEmpty) {
-        for (var file in panoramicImages) {
+        print('📤 Uploading ${panoramicImages.length} panoramic images...');
+        for (int i = 0; i < panoramicImages.length; i++) {
+          final file = panoramicImages[i];
+          print('  📷 Uploading panoramic image ${i + 1}/${panoramicImages.length}');
           final url = await FirebaseStorageUtils.uploadImage(file, 'panoramic_xrays');
-          if (url != null) panoramicUrls.add(url);
+          if (url != null) {
+            panoramicUrls.add(url);
+            print('  ✅ Success! URL: $url');
+          } else {
+            print('  ❌ Failed to upload panoramic image ${i + 1}');
+          }
         }
       }
 
       // Upload intraoral images
       if (intraoralImages != null && intraoralImages.isNotEmpty) {
-        for (var file in intraoralImages) {
+        print('📤 Uploading ${intraoralImages.length} intraoral images...');
+        for (int i = 0; i < intraoralImages.length; i++) {
+          final file = intraoralImages[i];
+          print('  📷 Uploading intraoral image ${i + 1}/${intraoralImages.length}');
           final url = await FirebaseStorageUtils.uploadImage(file, 'intraoral_xrays');
-          if (url != null) intraoralUrls.add(url);
+          if (url != null) {
+            intraoralUrls.add(url);
+            print('  ✅ Success! URL: $url');
+          } else {
+            print('  ❌ Failed to upload intraoral image ${i + 1}');
+          }
         }
       }
 
+      print('✅ Upload complete!');
+      print('📊 Panoramic URLs: ${panoramicUrls.length}');
+      print('📊 Intraoral URLs: ${intraoralUrls.length}');
+      
+      if (panoramicUrls.isEmpty && intraoralUrls.isEmpty) {
+        throw Exception('No images were uploaded successfully. Check Firebase Storage permissions.');
+      }
+
       // Save record with images
+      print('💾 Saving record to Firestore...');
       final record = MedicalRecordEntity(
         patientName: patientName,
         panoramicImages: panoramicUrls.isEmpty ? null : panoramicUrls,
@@ -111,11 +141,18 @@ class PatientDetailsViewModel extends Cubit<PatientDetailsState> {
       );
       
       await _saveMedicalRecordUseCase.call(record);
+      print('✅ Record saved to Firestore!');
       
-      // Don't emit success here, let the stream listener update the records
-      // The getMedicalRecords stream will automatically pick up the new record
-    } catch (e) {
-      if (!isClosed) emit(PatientDetailsFailure(e.toString()));
+      // Wait a bit for Firestore to update, then refresh
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Force refresh to show new images
+      print('🔄 Refreshing records...');
+      getMedicalRecords(patientName);
+    } catch (e, stackTrace) {
+      print('❌ Upload error: $e');
+      print('Stack trace: $stackTrace');
+      if (!isClosed) emit(PatientDetailsFailure('Failed to upload images: $e'));
     }
   }
 

@@ -11,6 +11,7 @@ import '../../../api/config/di/di.dart';
 import '../../../api/web_services.dart';
 import '../../../core/core/utils/app_colors.dart';
 import '../../../core/core/utils/app_textstyles.dart';
+import '../../../core/widgets/advanced_voice_button.dart';
 import '../../../domain/entities/medical_record_entity.dart';
 import '../../../widgets/widgets/custom_elevated_button.dart';
 import '../../../widgets/widgets/custom_text_form_field.dart';
@@ -181,17 +182,28 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Processing audio..."),
+            content: Text("Processing audio... This may take 30-60 seconds"),
             backgroundColor: AppColors.primaryBlue,
+            duration: Duration(seconds: 5),
           ),
         );
       }
 
-      // Send audio to backend
+      // Send audio to backend with longer timeout for Whisper processing
       final webServices = getIt<WebServices>();
-      print('DEBUG: Sending audio to API...');
-      final response = await webServices.voiceToRecord(File(_audioPath!));
-      print('DEBUG: API Response: $response');
+      print('DEBUG: Sending audio to API (port 8003)...');
+      print('DEBUG: Audio file size: ${File(_audioPath!).lengthSync()} bytes');
+      
+      final response = await webServices.voiceToRecord(File(_audioPath!))
+          .timeout(
+            const Duration(seconds: 120), // 2 minutes for first-time model loading
+            onTimeout: () {
+              throw Exception('Request timeout after 2 minutes. The Whisper model may still be loading on first use.');
+            },
+          );
+          
+      print('DEBUG: API Response received!');
+      print('DEBUG: Response: $response');
       print('DEBUG: diagnosis: ${response['diagnosis']}');
       print('DEBUG: procedure_performed: ${response['procedure_performed']}');
       print('DEBUG: treatment_plan: ${response['treatment_plan']}');
@@ -212,25 +224,42 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
           const SnackBar(
             content: Text("✅ Voice transcribed successfully!"),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
           ),
         );
       }
 
       // Clean up audio file
       if (_audioPath != null) {
-        File(_audioPath!).delete();
+        try {
+          File(_audioPath!).delete();
+        } catch (e) {
+          print('DEBUG: Failed to delete audio file: $e');
+        }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('DEBUG: Error in _stopListening: $e');
+      print('DEBUG: Stack trace: $stackTrace');
+      
       setState(() {
         _isProcessing = false;
       });
       
+      String errorMsg = e.toString();
+      if (errorMsg.contains('Connection closed') || errorMsg.contains('SocketException')) {
+        errorMsg = 'Speech-to-Text API connection failed. Service may be down.';
+      } else if (errorMsg.contains('timeout') || errorMsg.contains('90 seconds')) {
+        errorMsg = 'Processing is taking longer than expected. The service may be loading models or the audio is too long.';
+      } else if (errorMsg.contains('404')) {
+        errorMsg = 'Speech-to-Text endpoint not found on port 8003. Check if service is running.';
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Failed to process audio: $e"),
+            content: Text("Failed to process audio:\n$errorMsg"),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -282,8 +311,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                 _imagesUploading = false;
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Images uploaded successfully!"), backgroundColor: Colors.green),
+                const SnackBar(content: Text("Images uploaded successfully!"), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
               );
+              // Force UI rebuild to show new images
+              Future.delayed(const Duration(milliseconds: 300), () {
+                if (mounted) setState(() {});
+              });
             } else if (state is PatientDetailsFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Error: ${state.message}"), backgroundColor: Colors.red),
@@ -476,20 +509,38 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildVoiceMicButton(
+                AdvancedVoiceButton(
                   label: "Diagnosis",
-                  field: 'diagnosis',
                   isActive: _isListening && _currentField == 'diagnosis',
+                  onTap: () {
+                    if (_isListening && _currentField == 'diagnosis') {
+                      _stopListening();
+                    } else {
+                      _startListening('diagnosis');
+                    }
+                  },
                 ),
-                _buildVoiceMicButton(
+                AdvancedVoiceButton(
                   label: "Procedure",
-                  field: 'procedure',
                   isActive: _isListening && _currentField == 'procedure',
+                  onTap: () {
+                    if (_isListening && _currentField == 'procedure') {
+                      _stopListening();
+                    } else {
+                      _startListening('procedure');
+                    }
+                  },
                 ),
-                _buildVoiceMicButton(
+                AdvancedVoiceButton(
                   label: "Plan",
-                  field: 'plan',
                   isActive: _isListening && _currentField == 'plan',
+                  onTap: () {
+                    if (_isListening && _currentField == 'plan') {
+                      _stopListening();
+                    } else {
+                      _startListening('plan');
+                    }
+                  },
                 ),
               ],
             ),
@@ -507,77 +558,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildVoiceMicButton({
-    required String label,
-    required String field,
-    required bool isActive,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        if (isActive) {
-          _stopListening();
-        } else {
-          _startListening(field);
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 20.w),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primaryBlue : AppColors.whiteColor,
-          borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(
-            color: isActive ? AppColors.primaryBlue : AppColors.borderSoft,
-            width: 2,
-          ),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: AppColors.primaryBlue.withOpacity(0.3),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                  )
-                ]
-              : [],
-        ),
-        child: Column(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (isActive)
-                    Container(
-                      width: 40.r,
-                      height: 40.r,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.3),
-                      ),
-                    ),
-                  Icon(
-                    isActive ? Icons.mic : Icons.mic_none,
-                    color: isActive ? Colors.white : AppColors.primaryBlue,
-                    size: 28.r,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              label,
-              style: AppTextStyles.labelSmall.copyWith(
-                color: isActive ? Colors.white : AppColors.primaryBlue,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -635,18 +615,18 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   }
 
   Widget _buildImagingSection(List<MedicalRecordEntity> records) {
-    final List<String> allImages = [];
+    // Separate panoramic and intraoral images
+    final List<String> panoramicImages = [];
+    final List<String> intraoralImages = [];
+    
     for (var record in records) {
-      if (record.panoramicImages != null) allImages.addAll(record.panoramicImages!);
-      if (record.intraoralImages != null) allImages.addAll(record.intraoralImages!);
+      if (record.panoramicImages != null) panoramicImages.addAll(record.panoramicImages!);
+      if (record.intraoralImages != null) intraoralImages.addAll(record.intraoralImages!);
     }
     
-    // Debug: print to see what we have
     print('DEBUG: Total records: ${records.length}');
-    print('DEBUG: Total images found: ${allImages.length}');
-    for (var record in records) {
-      print('DEBUG: Record - Panoramic: ${record.panoramicImages?.length ?? 0}, Intraoral: ${record.intraoralImages?.length ?? 0}');
-    }
+    print('DEBUG: Panoramic images: ${panoramicImages.length}');
+    print('DEBUG: Intraoral images: ${intraoralImages.length}');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,19 +673,109 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
           ),
         ],
         
-        SizedBox(height: 16.h),
+        SizedBox(height: 24.h),
         
-        // Existing images grid - SIMPLIFIED LOGIC
-        if (allImages.isEmpty)
-          Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 20.h),
-              child: Text("No clinical images found.", style: AppTextStyles.bodySmall),
-            ),
-          )
-        else
-          _buildImagingGrid(allImages),
+        // Panoramic X-Rays Section
+        _buildImageCategorySection(
+          title: "Panoramic X-Rays",
+          icon: Icons.panorama_horizontal_select,
+          images: panoramicImages,
+          emptyMessage: "No panoramic X-rays uploaded yet",
+        ),
+        
+        SizedBox(height: 24.h),
+        
+        // Intraoral Images Section
+        _buildImageCategorySection(
+          title: "Intraoral Images",
+          icon: Icons.center_focus_strong_outlined,
+          images: intraoralImages,
+          emptyMessage: "No intraoral images uploaded yet",
+        ),
       ],
+    );
+  }
+
+  Widget _buildImageCategorySection({
+    required String title,
+    required IconData icon,
+    required List<String> images,
+    required String emptyMessage,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(16.r),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8.r),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Icon(icon, color: AppColors.primaryBlue, size: 20.r),
+              ),
+              SizedBox(width: 12.w),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTextStyles.titleSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    "${images.length} ${images.length == 1 ? 'image' : 'images'}",
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          
+          SizedBox(height: 16.h),
+          
+          // Images grid or empty state
+          if (images.isEmpty)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20.h),
+                child: Column(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 48.r,
+                      color: AppColors.textSecondary.withOpacity(0.3),
+                    ),
+                    SizedBox(height: 12.h),
+                    Text(
+                      emptyMessage,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            _buildImagingGrid(images),
+        ],
+      ),
     );
   }
 

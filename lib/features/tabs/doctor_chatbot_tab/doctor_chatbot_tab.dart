@@ -82,7 +82,10 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> with TickerProvider
       _scrollToBottom();
 
       try {
-        final response = await _webServices.getDoctorReply({"question": text});
+        final response = await _webServices.getDoctorReply({
+          "message": text,
+          "history": []
+        });
         
         if (mounted) {
           setState(() {
@@ -97,6 +100,7 @@ class _DoctorChatBotTabState extends State<DoctorChatBotTab> with TickerProvider
           _scrollToBottom();
         }
       } catch (e) {
+        print("❌ Doctor chat error: $e");
         if (mounted) {
           setState(() {
             _messages.add({
